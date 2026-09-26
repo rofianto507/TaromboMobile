@@ -1,0 +1,65 @@
+name: tarombo_mobile
+description: "Tarombo Mobile - Aplikasi silsilah keluarga marga Silaen untuk anggota."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Networking
+  dio: ^5.8.0
+
+  # State management (manual providers - no code gen)
+  flutter_riverpod: ^2.6.1
+
+  # Navigation
+  go_router: ^14.8.1
+
+  # Secure storage (session cookie)
+  flutter_secure_storage: ^9.2.2
+
+  # Date formatting
+  intl: ^0.20.2
+
+  # Foto (foto profil, lampiran usulan)
+  image_picker: ^1.1.2
+  cached_network_image: ^3.4.1
+
+  # Peta kerabat terdekat + GPS
+  geolocator: ^13.0.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Arsip: unduh & buka berkas non-foto (dokumen/audio/video/naskah) lewat
+  # aplikasi bawaan device
+  path_provider: ^2.1.5
+  open_filex: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  image_path_ios: "assets/images/logo_ios.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#2E5339"
+  adaptive_icon_foreground: "assets/images/logo_foreground.png"
+  remove_alpha_ios: true

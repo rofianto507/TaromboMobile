@@ -1,0 +1,421 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../core/error/exceptions.dart';
+import '../../../../shared/utils/odoo_json.dart';
+import '../../../../shared/widgets/orang_search_sheet.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../providers/usulan_provider.dart';
+
+const _kGreen1 = Color(0xFF2E5339);
+const _kGold   = Color(0xFFC8A24A);
+
+enum _Mode { tambah, edit }
+
+class UsulanFormScreen extends ConsumerStatefulWidget {
+  const UsulanFormScreen({super.key});
+
+  @override
+  ConsumerState<UsulanFormScreen> createState() => _UsulanFormScreenState();
+}
+
+class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  _Mode _mode = _Mode.tambah;
+  String _jenisEdit = 'koreksi'; // 'koreksi' atau 'lengkapi', hanya relevan saat _mode == edit
+
+  // Tambah
+  final _namaCtrl = TextEditingController();
+  String _jenisKelamin = 'L';
+  Map<String, dynamic>? _ayah;
+
+  // Edit (koreksi/lengkapi)
+  Map<String, dynamic>? _target;
+  bool _loadingTarget = false;
+  String? _masihHidup; // null = tidak diubah, 'ya'/'tidak'
+  int? _urutan;
+  final _suamiNamaCtrl = TextEditingController();
+  int? _suamiMargaId;
+  List<Map<String, dynamic>> _margaList = [];
+
+  // Bersama
+  int? _punguanId;
+  List<Map<String, dynamic>> _punguanList = [];
+  final _sumberCtrl = TextEditingController();
+  final _catatanCtrl = TextEditingController();
+  String? _fotoBase64;
+  bool _loadingLookup = true;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLookups();
+  }
+
+  Future<void> _loadLookups() async {
+    try {
+      final api = ref.read(apiClientProvider);
+      final results = await Future.wait([
+        api.callKw(model: 'tarombo.punguan', method: 'search_read', args: [
+          []
+        ], kwargs: {
+          'fields': ['id', 'name'],
+          'order': 'name',
+          'limit': 100
+        }),
+        api.callKw(model: 'tarombo.marga', method: 'search_read', args: [
+          []
+        ], kwargs: {
+          'fields': ['id', 'name'],
+          'order': 'name',
+          'limit': 200
+        }),
+      ]);
+      setState(() {
+        _punguanList = (results[0] as List).cast<Map<String, dynamic>>();
+        _margaList = (results[1] as List).cast<Map<String, dynamic>>();
+      });
+    } catch (_) {
+      setState(() => _error = 'Gagal memuat data referensi. Periksa koneksi Anda.');
+    } finally {
+      setState(() => _loadingLookup = false);
+    }
+  }
+
+  Future<void> _pickAyah() async {
+    final result = await showOrangSearchSheet(context, ref, title: 'Pilih Ayah', extraDomain: const [
+      ['jenis_kelamin', '=', 'L'],
+    ]);
+    if (result != null) setState(() => _ayah = result);
+  }
+
+  Future<void> _pickTarget() async {
+    final result = await showOrangSearchSheet(context, ref, title: 'Pilih Orang yang Dikoreksi/Dilengkapi');
+    if (result == null) return;
+    setState(() {
+      _target = result;
+      _loadingTarget = true;
+    });
+    try {
+      final api = ref.read(apiClientProvider);
+      final rows = await api.callKw(
+        model: 'tarombo.orang',
+        method: 'search_read',
+        args: [
+          [
+            ['id', '=', result['id']]
+          ]
+        ],
+        kwargs: {
+          'fields': ['jenis_kelamin', 'masih_hidup', 'urutan', 'suami_nama', 'suami_marga_id', 'punguan_id'],
+        },
+      ) as List;
+      if (rows.isNotEmpty) {
+        final r = rows.first as Map<String, dynamic>;
+        setState(() {
+          _jenisKelamin = r['jenis_kelamin'] as String;
+          _urutan = r['urutan'] as int;
+          _suamiNamaCtrl.text = asOdooString(r['suami_nama']) ?? '';
+          _suamiMargaId = (r['suami_marga_id'] is List) ? r['suami_marga_id'][0] as int : null;
+          _punguanId = (r['punguan_id'] is List) ? r['punguan_id'][0] as int : null;
+        });
+      }
+    } catch (_) {
+      setState(() => _error = 'Gagal memuat data orang. Periksa koneksi Anda.');
+    } finally {
+      setState(() => _loadingTarget = false);
+    }
+  }
+
+  Future<void> _pickFoto() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    setState(() => _fotoBase64 = base64Encode(bytes));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_mode == _Mode.tambah && _ayah == null) {
+      setState(() => _error = 'Pilih ayah terlebih dahulu.');
+      return;
+    }
+    if (_mode == _Mode.edit && _target == null) {
+      setState(() => _error = 'Pilih orang yang akan dikoreksi/dilengkapi.');
+      return;
+    }
+    if (_punguanId == null) {
+      setState(() => _error = 'Pilih punguan terlebih dahulu.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final service = ref.read(usulanSubmitProvider);
+      if (_mode == _Mode.tambah) {
+        await service.submitTambah(
+          nama: _namaCtrl.text.trim(),
+          jenisKelamin: _jenisKelamin,
+          ayahId: _ayah!['id'] as int,
+          punguanId: _punguanId!,
+          sumberKet: _sumberCtrl.text.trim(),
+          catatan: _catatanCtrl.text.trim(),
+          fotoBase64: _fotoBase64,
+        );
+      } else {
+        await service.submitEdit(
+          jenis: _jenisEdit,
+          orangId: _target!['id'] as int,
+          punguanId: _punguanId!,
+          sumberKet: _sumberCtrl.text.trim(),
+          usulJenisKelamin: _jenisKelamin,
+          usulMasihHidup: _masihHidup,
+          usulUrutan: _urutan,
+          usulSuamiNama: _jenisKelamin == 'P' ? _suamiNamaCtrl.text.trim() : null,
+          usulSuamiMargaId: _jenisKelamin == 'P' ? _suamiMargaId : null,
+          catatan: _catatanCtrl.text.trim(),
+          fotoBase64: _fotoBase64,
+        );
+      }
+      if (!mounted) return;
+      context.pop();
+    } catch (e) {
+      setState(() => _error = e is ServerException ? e.message : 'Gagal mengirim usulan. Coba lagi.');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _suamiNamaCtrl.dispose();
+    _sumberCtrl.dispose();
+    _catatanCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Usulan Baru')),
+      body: _loadingLookup
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SegmentedButton<_Mode>(
+                      segments: const [
+                        ButtonSegment(value: _Mode.tambah, label: Text('Tambah Baru'), icon: Icon(Icons.person_add_alt_1_outlined)),
+                        ButtonSegment(value: _Mode.edit, label: Text('Koreksi/Lengkapi'), icon: Icon(Icons.edit_note_rounded)),
+                      ],
+                      selected: {_mode},
+                      onSelectionChanged: (s) => setState(() {
+                        _mode = s.first;
+                        _error = null;
+                      }),
+                    ),
+                    const SizedBox(height: 20),
+                    if (_mode == _Mode.tambah) ..._buildTambahFields() else ..._buildEditFields(),
+                    const Divider(height: 32),
+                    DropdownButtonFormField<int>(
+                      initialValue: _punguanId,
+                      decoration: const InputDecoration(labelText: 'Punguan', border: OutlineInputBorder()),
+                      items: _punguanList.map((p) => DropdownMenuItem(value: p['id'] as int, child: Text(p['name'] as String))).toList(),
+                      onChanged: (v) => setState(() => _punguanId = v),
+                      validator: (v) => v == null ? 'Wajib dipilih' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _sumberCtrl,
+                      decoration: const InputDecoration(labelText: 'Sumber Keterangan', border: OutlineInputBorder()),
+                      maxLines: 2,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _catatanCtrl,
+                      decoration: const InputDecoration(labelText: 'Catatan (opsional)', border: OutlineInputBorder()),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildFotoPicker(),
+                    if (_error != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                        child: Text(_error!, style: TextStyle(color: Colors.red.shade700)),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: _kGold, foregroundColor: _kGreen1, padding: const EdgeInsets.symmetric(vertical: 16)),
+                      onPressed: _submitting ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
+                          : const Text('Ajukan Usulan', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  List<Widget> _buildTambahFields() {
+    return [
+      TextFormField(
+        controller: _namaCtrl,
+        decoration: const InputDecoration(labelText: 'Nama Lengkap', border: OutlineInputBorder()),
+        validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+      ),
+      const SizedBox(height: 16),
+      _buildJenisKelaminRadio(),
+      const SizedBox(height: 8),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        tileColor: const Color(0xFFFAF9F5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
+        leading: const Icon(Icons.man_rounded, color: _kGreen1),
+        title: Text(_ayah?['name'] as String? ?? 'Pilih Ayah'),
+        subtitle: const Text('Ketuk untuk mencari di pohon keluarga'),
+        trailing: const Icon(Icons.search),
+        onTap: _pickAyah,
+      ),
+    ];
+  }
+
+  List<Widget> _buildEditFields() {
+    return [
+      SegmentedButton<String>(
+        segments: const [
+          ButtonSegment(value: 'koreksi', label: Text('Koreksi')),
+          ButtonSegment(value: 'lengkapi', label: Text('Lengkapi')),
+        ],
+        selected: {_jenisEdit},
+        onSelectionChanged: (s) => setState(() => _jenisEdit = s.first),
+      ),
+      const SizedBox(height: 12),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        tileColor: const Color(0xFFFAF9F5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
+        leading: const Icon(Icons.person_search_rounded, color: _kGreen1),
+        title: Text(_target?['name'] as String? ?? 'Pilih Orang'),
+        subtitle: const Text('Ketuk untuk mencari di pohon keluarga'),
+        trailing: _loadingTarget ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.search),
+        onTap: _loadingTarget ? null : _pickTarget,
+      ),
+      if (_target != null) ...[
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _namaCtrl,
+          decoration: const InputDecoration(labelText: 'Nama Baru (opsional, kosongkan jika tidak berubah)', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 16),
+        _buildJenisKelaminRadio(),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String?>(
+          initialValue: _masihHidup,
+          decoration: const InputDecoration(labelText: 'Masih Hidup?', border: OutlineInputBorder()),
+          items: const [
+            DropdownMenuItem(value: null, child: Text('(Tidak diubah)')),
+            DropdownMenuItem(value: 'ya', child: Text('Ya')),
+            DropdownMenuItem(value: 'tidak', child: Text('Tidak')),
+          ],
+          onChanged: (v) => setState(() => _masihHidup = v),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: _urutan?.toString(),
+          decoration: const InputDecoration(labelText: 'Anak ke-', border: OutlineInputBorder()),
+          keyboardType: TextInputType.number,
+          onChanged: (v) => _urutan = int.tryParse(v),
+        ),
+        if (_jenisKelamin == 'P') ...[
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _suamiNamaCtrl,
+            decoration: const InputDecoration(labelText: 'Nama Suami', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int?>(
+            initialValue: _suamiMargaId,
+            decoration: const InputDecoration(labelText: 'Marga Suami', border: OutlineInputBorder()),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('(Tidak diubah)')),
+              ..._margaList.map((m) => DropdownMenuItem(value: m['id'] as int, child: Text(m['name'] as String))),
+            ],
+            onChanged: (v) => setState(() => _suamiMargaId = v),
+          ),
+        ],
+      ],
+    ];
+  }
+
+  Widget _buildJenisKelaminRadio() {
+    return RadioGroup<String>(
+      groupValue: _jenisKelamin,
+      onChanged: (v) => setState(() => _jenisKelamin = v!),
+      child: Row(
+        children: const [
+          Expanded(child: RadioListTile<String>(value: 'L', title: Text('Laki-laki'))),
+          Expanded(child: RadioListTile<String>(value: 'P', title: Text('Perempuan'))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFotoPicker() {
+    return GestureDetector(
+      onTap: _pickFoto,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF9F5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _kGold.withValues(alpha: 0.12),
+                border: Border.all(color: _kGold.withValues(alpha: 0.4)),
+              ),
+              child: _fotoBase64 != null
+                  ? ClipOval(child: Image.memory(base64Decode(_fotoBase64!), fit: BoxFit.cover))
+                  : const Icon(Icons.camera_alt_outlined, color: _kGold, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                _fotoBase64 != null ? 'Foto dipilih' : 'Tambahkan foto (opsional)',
+                style: TextStyle(color: _fotoBase64 != null ? _kGreen1 : const Color(0xFF888888), fontSize: 14),
+              ),
+            ),
+            if (_fotoBase64 != null)
+              IconButton(
+                icon: Icon(Icons.close_rounded, size: 18, color: Colors.grey.shade500),
+                onPressed: () => setState(() => _fotoBase64 = null),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

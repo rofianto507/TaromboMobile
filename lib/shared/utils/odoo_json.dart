@@ -1,0 +1,7 @@
+/// Odoo JSON-RPC mengembalikan `false` (bukan `null` atau string kosong)
+/// untuk field Char/Text/Selection/Many2one/Date/Datetime yang belum diisi.
+/// Cast langsung `json['x'] as String?` akan MELEMPAR error saat runtime-nya
+/// `false` (bool), karena bool bukan subtype dari String? — bukan cuma
+/// mengembalikan null seperti yang sering diasumsikan. Pakai helper ini di
+/// SETIAP field nullable dari respons call_kw, bukan cast langsung.
+String? asOdooString(dynamic v) => v is String ? v : null;

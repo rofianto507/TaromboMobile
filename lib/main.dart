@@ -1,0 +1,81 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'core/router/app_router.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/klaim/presentation/providers/klaim_provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
+  runApp(const ProviderScope(child: TaromboApp()));
+}
+
+class TaromboApp extends ConsumerStatefulWidget {
+  const TaromboApp({super.key});
+
+  @override
+  ConsumerState<TaromboApp> createState() => _TaromboAppState();
+}
+
+class _TaromboAppState extends ConsumerState<TaromboApp> with WidgetsBindingObserver {
+  // Dipakai untuk membedakan "benar-benar sempat dikirim ke background lalu
+  // kembali" dari sekadar "inactive" sesaat (overlay screenshot MIUI, tarik
+  // notification shade, dialog izin sistem, dll). Android/MIUI mengirim
+  // resumed→inactive→resumed untuk kasus sesaat itu TANPA pernah singgah di
+  // paused — hanya benar-benar pindah app/kunci layar yang singgah di
+  // paused. Tanpa penanda ini, ambil screenshot saja memicu refresh (splash
+  // berkedip) setiap kali.
+  bool _sempatPaused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _sempatPaused = true;
+      return;
+    }
+    if (state != AppLifecycleState.resumed || !_sempatPaused) return;
+    _sempatPaused = false;
+
+    // Status klaim (dan sesi login) bisa berubah di luar aplikasi — mis.
+    // pengurus menyetujui lewat web sementara HP anggota tertidur di
+    // background. Cek ulang begitu aplikasi aktif lagi, supaya anggota
+    // tidak terjebak di layar "Klaim Identitas"/"Menunggu Verifikasi" yang
+    // sudah usang tanpa harus force-close aplikasi secara manual.
+    ref.invalidate(klaimNotifierProvider);
+    ref.invalidate(authNotifierProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final router = ref.watch(appRouterProvider);
+    return MaterialApp.router(
+      title: 'Tarombo',
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      routerConfig: router,
+      debugShowCheckedModeBanner: false,
+      locale: const Locale('id'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('id'), Locale('en')],
+    );
+  }
+}
