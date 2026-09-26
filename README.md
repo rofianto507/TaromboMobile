@@ -211,4 +211,4 @@ Endpoint autentikasi dihandle melalui controller di `tarombo/controllers/mobile_
 ## Lisensi
 
 Proyek ini bersifat privat dan digunakan untuk keperluan internal komunitas marga Silaen.  
-© 2025–2026 Sel Studio — Rofianto Silaen
+© 2025–2026 Sel Studio
