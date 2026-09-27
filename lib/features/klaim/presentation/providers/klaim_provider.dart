@@ -8,6 +8,23 @@ final klaimNotifierProvider = AsyncNotifierProvider<KlaimNotifier, KlaimInfo>(Kl
 class KlaimNotifier extends AsyncNotifier<KlaimInfo> {
   @override
   Future<KlaimInfo> build() async {
+    // WAJIB nunggu authNotifierProvider selesai resolve duluan (bukan cuma
+    // ref.read yang bisa balikin state lama) — sebelumnya build() ini
+    // langsung memanggil API begitu appRouterProvider dibuat, lewat
+    // ref.listen(klaimNotifierProvider, ...) di app_router.dart yang secara
+    // tidak sengaja membuat provider ini instantiate SEJAK APLIKASI BARU
+    // DIBUKA, sebelum ada sesi login sama sekali. Panggilan API tanpa sesi
+    // itu gagal, provider ini KETERUSAN nyangkut di state error itu, dan
+    // TIDAK ADA yang otomatis memicu fetch ulang setelah login berhasil —
+    // makanya selalu nyangkut di layar Klaim Identitas sampai tombol reload
+    // ditekan manual. Dengan ref.watch(...future) di sini, provider ini
+    // otomatis rebuild kapan pun status login berubah (termasuk begitu login
+    // sukses), dan tidak pernah memanggil API sama sekali selagi belum login.
+    final authUser = await ref.watch(authNotifierProvider.future);
+    if (authUser == null) {
+      return const KlaimInfo(status: KlaimStatus.belum);
+    }
+
     final api = ref.read(apiClientProvider);
 
     // get_my_orang() dicek DULUAN sebagai fakta pasti — action_setujui() di

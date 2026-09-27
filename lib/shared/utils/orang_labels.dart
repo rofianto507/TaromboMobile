@@ -13,17 +13,10 @@ String statusLabel(String? status) {
 
 String jenisKelaminLabel(String? jk) => jk == 'P' ? 'Perempuan' : 'Laki-laki';
 
-const Map<String, String> bidangLabels = {
-  'tani': 'Pertanian',
-  'dagang': 'Perdagangan',
-  'asn': 'ASN',
-  'swasta': 'Swasta',
-  'wiraswasta': 'Wiraswasta',
-  'pendidik': 'Pendidik',
-  'kesehatan': 'Kesehatan',
-  'rohani': 'Rohaniwan',
-  'lain': 'Lain-lain',
-};
+// Bidang pekerjaan TIDAK lagi punya daftar tetap di sini — sejak
+// tarombo.bidang jadi model tersendiri yang dikelola bebas oleh
+// pengurus/admin, namanya sudah datang langsung dari server (lihat
+// direktori_keahlian_screen.dart), jadi tidak perlu tabel terjemahan lokal.
 
 const Map<String, String> jenjangLabels = {
   'sd': 'SD',
@@ -38,5 +31,4 @@ const Map<String, String> jenjangLabels = {
   'lain': 'Lain-lain',
 };
 
-String bidangLabel(String? v) => v == null ? '-' : (bidangLabels[v] ?? v);
 String jenjangLabel(String? v) => v == null ? '-' : (jenjangLabels[v] ?? v);

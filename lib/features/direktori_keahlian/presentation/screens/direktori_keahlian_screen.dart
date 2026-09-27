@@ -18,7 +18,8 @@ class DirektoriKeahlianScreen extends ConsumerStatefulWidget {
 
 class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScreen> {
   final _ctrl = TextEditingController();
-  String? _bidangFilter;
+  int? _bidangFilter;
+  List<Map<String, dynamic>> _bidangList = [];
   List<Map<String, dynamic>> _results = [];
   bool _loading = true;
   String? _error;
@@ -26,7 +27,27 @@ class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScree
   @override
   void initState() {
     super.initState();
+    _loadBidangList();
     _search();
+  }
+
+  Future<void> _loadBidangList() async {
+    try {
+      final api = ref.read(apiClientProvider);
+      // tarombo.bidang dikelola bebas oleh pengurus/admin (menu Konfigurasi),
+      // jadi daftar chip filter di sini HARUS diambil langsung dari server,
+      // bukan daftar tetap — supaya bidang baru yang ditambahkan otomatis
+      // muncul tanpa perlu update aplikasi.
+      final rows = await api.callKw(
+        model: 'tarombo.bidang',
+        method: 'search_read',
+        args: [[]],
+        kwargs: {'fields': ['id', 'name'], 'order': 'name'},
+      ) as List;
+      if (mounted) setState(() => _bidangList = rows.cast<Map<String, dynamic>>());
+    } catch (_) {
+      // Non-fatal: chip filter bidang cukup kosong, pencarian utama tetap jalan.
+    }
   }
 
   Future<void> _search([String q = '']) async {
@@ -38,7 +59,7 @@ class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScree
       final api = ref.read(apiClientProvider);
       final domain = [
         ['masih_hidup', '=', true],
-        if (_bidangFilter != null) ['bidang_kini', '=', _bidangFilter],
+        if (_bidangFilter != null) ['bidang_kini_id', '=', _bidangFilter],
         if (q.trim().isNotEmpty)
           '|',
         if (q.trim().isNotEmpty) ['name', 'ilike', q.trim()],
@@ -49,7 +70,7 @@ class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScree
         method: 'search_read',
         args: [domain],
         kwargs: {
-          'fields': ['id', 'name', 'jenis_kelamin', 'bidang_kini', 'pekerjaan_kini', 'pendidikan_tertinggi', 'wilayah_id'],
+          'fields': ['id', 'name', 'jenis_kelamin', 'bidang_kini_id', 'pekerjaan_kini', 'pendidikan_tertinggi', 'wilayah_id'],
           'limit': 50,
           'order': 'name',
         },
@@ -89,31 +110,32 @@ class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScree
               ),
             ),
           ),
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _FilterChip(label: 'Semua Bidang', selected: _bidangFilter == null, onTap: () {
-                  setState(() => _bidangFilter = null);
-                  _search(_ctrl.text);
-                }),
-                const SizedBox(width: 8),
-                ...bidangLabels.entries.map((e) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _FilterChip(
-                        label: e.value,
-                        selected: _bidangFilter == e.key,
-                        onTap: () {
-                          setState(() => _bidangFilter = _bidangFilter == e.key ? null : e.key);
-                          _search(_ctrl.text);
-                        },
-                      ),
-                    )),
-              ],
+          if (_bidangList.isNotEmpty)
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _FilterChip(label: 'Semua Bidang', selected: _bidangFilter == null, onTap: () {
+                    setState(() => _bidangFilter = null);
+                    _search(_ctrl.text);
+                  }),
+                  const SizedBox(width: 8),
+                  ..._bidangList.map((b) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _FilterChip(
+                          label: b['name'] as String,
+                          selected: _bidangFilter == b['id'],
+                          onTap: () {
+                            setState(() => _bidangFilter = _bidangFilter == b['id'] ? null : b['id'] as int);
+                            _search(_ctrl.text);
+                          },
+                        ),
+                      )),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 8),
           Expanded(
             child: _loading
@@ -128,6 +150,7 @@ class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScree
                             itemBuilder: (_, i) {
                               final o = _results[i];
                               final wilayah = (o['wilayah_id'] is List && (o['wilayah_id'] as List).length > 1) ? o['wilayah_id'][1] as String : null;
+                              final bidang = (o['bidang_kini_id'] is List && (o['bidang_kini_id'] as List).length > 1) ? o['bidang_kini_id'][1] as String : null;
                               final pekerjaan = asOdooString(o['pekerjaan_kini']);
                               return ListTile(
                                 leading: OrangAvatar(orangId: o['id'] as int, jenisKelamin: o['jenis_kelamin'] as String, radius: 20),
@@ -135,7 +158,7 @@ class _DirektoriKeahlianScreenState extends ConsumerState<DirektoriKeahlianScree
                                 subtitle: Text(
                                   [
                                     if (pekerjaan != null && pekerjaan.isNotEmpty) pekerjaan,
-                                    bidangLabel(asOdooString(o['bidang_kini'])),
+                                    ?bidang,
                                     jenjangLabel(asOdooString(o['pendidikan_tertinggi'])),
                                     ?wilayah,
                                   ].join(' • '),
