@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/klaim_provider.dart';
 import '../../domain/entities/klaim_info.dart';
+import '../../../../shared/utils/confirm_logout.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold   = Color(0xFFC8A24A);
@@ -24,7 +25,11 @@ class KlaimPendingScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Keluar',
-            onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+            onPressed: () async {
+              if (await confirmLogout(context)) {
+                ref.read(authNotifierProvider.notifier).logout();
+              }
+            },
           ),
         ],
       ),
@@ -78,6 +83,14 @@ class KlaimPendingScreen extends ConsumerWidget {
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Muat Ulang Status'),
                 ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  ref.read(klaimReminderDismissedProvider.notifier).state = true;
+                  context.go('/home');
+                },
+                child: const Text('Lewati untuk sekarang'),
+              ),
             ],
           ),
         ),

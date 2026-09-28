@@ -10,6 +10,10 @@ import '../../features/klaim/presentation/screens/klaim_search_screen.dart';
 import '../../features/klaim/presentation/screens/klaim_new_person_screen.dart';
 import '../../features/klaim/presentation/screens/klaim_pending_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/shell/presentation/screens/main_shell_screen.dart';
+import '../../features/tarombo_tree/presentation/screens/tarombo_tree_screen.dart';
+import '../../features/account/presentation/screens/account_screen.dart';
+import '../../features/notifikasi/presentation/screens/notifikasi_screen.dart';
 import '../../features/profile/presentation/screens/profile_search_screen.dart';
 import '../../features/profile/presentation/screens/profile_detail_screen.dart';
 import '../../features/partuturan/presentation/screens/partuturan_screen.dart';
@@ -26,12 +30,15 @@ final _splashTimerProvider = FutureProvider<void>((ref) async {
   await Future.delayed(const Duration(milliseconds: 1200));
 });
 
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier();
   ref.onDispose(notifier.dispose);
 
   ref.listen(authNotifierProvider, (_, _) => notifier.signal());
   ref.listen(klaimNotifierProvider, (_, _) => notifier.signal());
+  ref.listen(klaimReminderDismissedProvider, (_, _) => notifier.signal());
   ref.listen(_splashTimerProvider, (_, _) => notifier.signal());
 
   // Auto-logout saat Odoo session expired (server restart, timeout, dll.).
@@ -43,6 +50,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   });
 
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: (context, state) {
@@ -83,20 +91,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final status = klaimAsync.valueOrNull?.status ?? KlaimStatus.belum;
       final isKlaimRoute = loc.startsWith('/klaim');
 
-      switch (status) {
-        case KlaimStatus.belum:
-          return isKlaimRoute ? null : '/klaim';
-        case KlaimStatus.menunggu:
-        case KlaimStatus.ditolak:
-          if (loc == '/klaim/pending') return null;
-          if (status == KlaimStatus.ditolak && loc == '/klaim') return null;
-          return '/klaim/pending';
-        case KlaimStatus.disetujui:
-          if (isKlaimRoute || loc == '/login' || loc == '/register' || loc == '/splash') {
-            return '/home';
-          }
-          return null;
+      if (status == KlaimStatus.disetujui) {
+        if (isKlaimRoute || loc == '/login' || loc == '/register' || loc == '/splash') {
+          return '/home';
+        }
+        return null;
       }
+
+      // Belum tertaut ke data anggota mana pun (belum/menunggu/ditolak).
+      // Sebelumnya akun begini dikunci total ke layar klaim. Sekarang form
+      // klaim cukup ditampilkan SEKALI per sesi aplikasi (ditandai lewat
+      // klaimReminderDismissedProvider, yang reset ke false setiap app
+      // dibuka ulang dari awal — lihat komentar di provider itu) dan boleh
+      // di-skip; setelah di-skip, pengguna bebas ke menu lain. Usulan
+      // (mengubah data bersama) sengaja DIKECUALIKAN dari pelonggaran ini —
+      // tetap dikunci sampai identitas benar-benar terverifikasi pengurus.
+      final isUsulanRoute = loc.startsWith('/usulan');
+      final reminderTarget = status == KlaimStatus.belum ? '/klaim' : '/klaim/pending';
+
+      if (isUsulanRoute) {
+        return isKlaimRoute ? null : reminderTarget;
+      }
+
+      final reminderDismissed = ref.read(klaimReminderDismissedProvider);
+      if (!reminderDismissed && !isKlaimRoute) {
+        return reminderTarget;
+      }
+      return null;
     },
     routes: [
       GoRoute(path: '/splash', name: 'splash', builder: (_, _) => const SplashScreen()),
@@ -105,22 +126,87 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/klaim', name: 'klaim', builder: (_, _) => const KlaimSearchScreen()),
       GoRoute(path: '/klaim/orang-baru', name: 'klaimOrangBaru', builder: (_, _) => const KlaimOrangBaruScreen()),
       GoRoute(path: '/klaim/pending', name: 'klaimPending', builder: (_, _) => const KlaimPendingScreen()),
-      GoRoute(path: '/home', name: 'home', builder: (_, _) => const HomeScreen()),
-      GoRoute(path: '/profil', name: 'profil', builder: (_, _) => const ProfileSearchScreen()),
+
+      // 3 tab utama (Beranda - Tarombo - Akun), tiap tab punya stack navigasi
+      // sendiri lewat StatefulShellRoute.indexedStack — pindah tab TIDAK
+      // reset posisi/state tab lain (beda dari sekadar push/pop GoRoute biasa).
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => MainShellScreen(shell: shell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/home', name: 'home', builder: (_, _) => const HomeScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/tarombo', name: 'taromboTree', builder: (_, _) => const TaromboTreeScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/akun', name: 'akun', builder: (_, _) => const AccountScreen()),
+          ]),
+        ],
+      ),
+
+      // Rute detail — sengaja parentNavigatorKey: root navigator, supaya
+      // dibuka FULL-SCREEN menutupi bottom bar (bukan menumpuk di dalam
+      // stack salah satu tab), konsisten dengan gaya "tap menu -> halaman
+      // penuh dengan tombol back" yang sudah ada sebelum bottom nav ini.
+      GoRoute(
+        path: '/notifikasi',
+        name: 'notifikasi',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const NotifikasiScreen(),
+      ),
+      GoRoute(
+        path: '/profil',
+        name: 'profil',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const ProfileSearchScreen(),
+      ),
       GoRoute(
         path: '/profil/:id',
         name: 'profilDetail',
+        parentNavigatorKey: _rootNavigatorKey,
         builder: (_, state) => ProfileDetailScreen(orangId: int.parse(state.pathParameters['id']!)),
       ),
-      GoRoute(path: '/partuturan', name: 'partuturan', builder: (_, _) => const PartuturanScreen()),
-      GoRoute(path: '/usulan', name: 'usulan', builder: (_, _) => const UsulanListScreen()),
-      GoRoute(path: '/usulan/baru', name: 'usulanBaru', builder: (_, _) => const UsulanFormScreen()),
-      GoRoute(path: '/direktori-keahlian', name: 'direktoriKeahlian', builder: (_, _) => const DirektoriKeahlianScreen()),
-      GoRoute(path: '/peta-kerabat', name: 'petaKerabat', builder: (_, _) => const NearbyMapScreen()),
-      GoRoute(path: '/arsip', name: 'arsip', builder: (_, _) => const ArsipListScreen()),
+      GoRoute(
+        path: '/partuturan',
+        name: 'partuturan',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const PartuturanScreen(),
+      ),
+      GoRoute(
+        path: '/usulan',
+        name: 'usulan',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const UsulanListScreen(),
+      ),
+      GoRoute(
+        path: '/usulan/baru',
+        name: 'usulanBaru',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const UsulanFormScreen(),
+      ),
+      GoRoute(
+        path: '/direktori-keahlian',
+        name: 'direktoriKeahlian',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const DirektoriKeahlianScreen(),
+      ),
+      GoRoute(
+        path: '/peta-kerabat',
+        name: 'petaKerabat',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const NearbyMapScreen(),
+      ),
+      GoRoute(
+        path: '/arsip',
+        name: 'arsip',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const ArsipListScreen(),
+      ),
       GoRoute(
         path: '/arsip/:id',
         name: 'arsipDetail',
+        parentNavigatorKey: _rootNavigatorKey,
         builder: (_, state) => ArsipDetailScreen(arsipId: int.parse(state.pathParameters['id']!)),
       ),
     ],

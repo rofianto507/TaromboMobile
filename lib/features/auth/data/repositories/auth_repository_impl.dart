@@ -17,6 +17,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<User> loginWithGoogle() async {
+    final model = await _remote.loginWithGoogle();
+    return model.toEntity();
+  }
+
+  @override
   Future<void> logout() => _remote.logout();
 
   @override

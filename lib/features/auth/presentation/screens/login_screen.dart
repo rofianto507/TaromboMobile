@@ -58,6 +58,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Future<void> _submitGoogle() async {
+    setState(() => _errorMsg = null);
+    await ref.read(authNotifierProvider.notifier).loginWithGoogle();
+    if (!mounted) return;
+    ref.read(authNotifierProvider).whenOrNull(
+      error: (e, _) {
+        final msg = e is AuthException ? e.message : 'Terjadi kesalahan koneksi.';
+        setState(() => _errorMsg = msg);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authNotifierProvider).isLoading;
@@ -226,6 +238,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                               child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                                             )
                                           : const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        child: Text('atau', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                                      ),
+                                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  SizedBox(
+                                    height: 50,
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: _kDark,
+                                        side: BorderSide(color: Colors.grey.shade300),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      ),
+                                      onPressed: isLoading ? null : _submitGoogle,
+                                      icon: Image.asset('assets/images/google_logo.png', width: 20, height: 20),
+                                      label: const Text('Masuk dengan Google', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                                     ),
                                   ),
                                 ],

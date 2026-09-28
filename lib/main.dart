@@ -51,6 +51,18 @@ class _TaromboAppState extends ConsumerState<TaromboApp> with WidgetsBindingObse
     if (state != AppLifecycleState.resumed || !_sempatPaused) return;
     _sempatPaused = false;
 
+    // Login Google (native account picker) JUGA memicu paused→resumed yang
+    // persis sama seperti balik dari background biasa — bedanya di sini app
+    // baru resume di TENGAH proses login yang belum selesai (authNotifier
+    // masih AsyncLoading, sedang menunggu respons /tarombo/mobile/google_login).
+    // Invalidate di momen ini akan membuang notifier yang sedang berjalan itu
+    // sebelum sempat menyimpan hasil loginnya ke state yang di-watch UI —
+    // login tetap SUKSES di server & tersimpan di storage (makanya buka ulang
+    // app langsung masuk), tapi UI nyangkut di layar login karena notifier
+    // penggantinya sudah keburu baca sesi lama (masih kosong). Jadi: lewati
+    // invalidate selagi ada proses auth yang sedang berjalan.
+    if (ref.read(authNotifierProvider).isLoading) return;
+
     // Status klaim (dan sesi login) bisa berubah di luar aplikasi — mis.
     // pengurus menyetujui lewat web sementara HP anggota tertidur di
     // background. Cek ulang begitu aplikasi aktif lagi, supaya anggota

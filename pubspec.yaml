@@ -42,6 +42,18 @@ dependencies:
   path_provider: ^2.1.5
   open_filex: ^4.5.0
 
+  # Login dengan akun Google
+  google_sign_in: ^6.2.2
+
+  # Versi aplikasi (ditampilkan di layar Akun)
+  package_info_plus: ^8.1.2
+
+  # Buka Kebijakan Privasi di browser dari layar Akun
+  url_launcher: ^6.3.1
+
+  # Visualisasi pohon silsilah (tab Tarombo)
+  graphview: ^1.5.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

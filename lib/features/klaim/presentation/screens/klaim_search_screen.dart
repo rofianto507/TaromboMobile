@@ -107,11 +107,27 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
         children: [
           Container(
             color: _kGreen1,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: const Text(
-              'Cari nama Anda di pohon keluarga Tarombo, lalu klaim sebagai diri sendiri. '
-              'Klaim akan ditinjau pengurus sebelum disetujui.',
-              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Cari nama Anda di pohon keluarga Tarombo, lalu klaim sebagai diri sendiri. '
+                  'Klaim akan ditinjau pengurus sebelum disetujui.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    style: TextButton.styleFrom(foregroundColor: _kGold, padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    onPressed: () {
+                      ref.read(klaimReminderDismissedProvider.notifier).state = true;
+                      context.go('/home');
+                    },
+                    child: const Text('Lewati untuk sekarang', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(

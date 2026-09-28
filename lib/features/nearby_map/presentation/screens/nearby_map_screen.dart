@@ -220,9 +220,11 @@ class _NearbyMapScreenState extends ConsumerState<NearbyMapScreen> {
               ],
             ),
             Text(
-              aktif
-                  ? 'Titik lokasi Anda terlihat oleh seluruh anggota di peta ini.'
-                  : 'Nonaktif — lokasi Anda tidak ditampilkan ke siapa pun.',
+              myOrang == null
+                  ? 'Klaim identitas Anda dulu untuk bisa membagikan lokasi.'
+                  : aktif
+                      ? 'Titik lokasi Anda terlihat oleh seluruh anggota di peta ini.'
+                      : 'Nonaktif — lokasi Anda tidak ditampilkan ke siapa pun.',
               style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
             ),
             if (_toggleError != null)

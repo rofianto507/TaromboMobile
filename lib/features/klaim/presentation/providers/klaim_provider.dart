@@ -5,6 +5,14 @@ import '../../domain/entities/klaim_info.dart';
 
 final klaimNotifierProvider = AsyncNotifierProvider<KlaimNotifier, KlaimInfo>(KlaimNotifier.new);
 
+/// Sengaja StateProvider biasa (in-memory, BUKAN secure storage/shared
+/// preferences): begitu proses aplikasi di-restart (cold start), nilainya
+/// balik ke false lagi — ini yang bikin pengingat klaim identitas "selalu
+/// muncul lagi tiap kali buka app dari awal" walau tadinya sempat di-skip,
+/// sesuai permintaan eksplisit user. Kalau ini disimpan permanen, pengguna
+/// yang sekali skip tidak akan pernah diingatkan lagi selamanya.
+final klaimReminderDismissedProvider = StateProvider<bool>((ref) => false);
+
 class KlaimNotifier extends AsyncNotifier<KlaimInfo> {
   @override
   Future<KlaimInfo> build() async {
