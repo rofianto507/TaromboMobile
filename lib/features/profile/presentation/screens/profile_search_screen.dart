@@ -96,13 +96,10 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
                                 separatorBuilder: (_, _) => const Divider(height: 1),
                                 itemBuilder: (_, i) {
                                   final o = _results[i];
-                                  final punguan = (o['punguan_id'] is List && (o['punguan_id'] as List).length > 1)
-                                      ? o['punguan_id'][1] as String
-                                      : '';
                                   return ListTile(
                                     leading: OrangAvatar(orangId: o['id'] as int, jenisKelamin: o['jenis_kelamin'] as String, radius: 20),
                                     title: Text(o['name'] as String),
-                                    subtitle: Text('Sundut ${o['sundut']}${punguan.isNotEmpty ? ' • $punguan' : ''} • ${statusLabel(asOdooString(o['status']))}'),
+                                    subtitle: Text('Sundut ${o['sundut']} • ${statusLabel(asOdooString(o['status']))}'),
                                     trailing: const Icon(Icons.chevron_right),
                                     onTap: () => context.push('/profil/${o['id']}'),
                                   );
