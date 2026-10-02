@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/session_expired_notifier.dart';
+import '../../../push/push_service.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
@@ -37,7 +40,12 @@ final authNotifierProvider =
 class AuthNotifier extends AsyncNotifier<User?> {
   @override
   Future<User?> build() async {
-    return ref.read(authRepositoryProvider).getCurrentUser();
+    final user = await ref.read(authRepositoryProvider).getCurrentUser();
+    // Sesi lama (dari secure storage, bukan baru login) juga perlu daftar
+    // ulang token FCM tiap app start — token bisa rotate kapan saja, bukan
+    // cuma sekali seumur install.
+    if (user != null) unawaited(ref.read(pushServiceProvider).daftarkanToken());
+    return user;
   }
 
   Future<void> login({required String username, required String password}) async {
@@ -47,6 +55,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
     );
     if (state.valueOrNull != null) {
       ref.read(sessionExpiredProvider).reset();
+      unawaited(ref.read(pushServiceProvider).daftarkanToken());
     }
   }
 
@@ -55,10 +64,13 @@ class AuthNotifier extends AsyncNotifier<User?> {
     state = await AsyncValue.guard(() => ref.read(authRepositoryProvider).loginWithGoogle());
     if (state.valueOrNull != null) {
       ref.read(sessionExpiredProvider).reset();
+      unawaited(ref.read(pushServiceProvider).daftarkanToken());
     }
   }
 
   Future<void> logout() async {
+    // SEBELUM sesi dibuang — unregister butuh cookie yang masih valid.
+    await ref.read(pushServiceProvider).lupakanToken();
     await ref.read(authRepositoryProvider).logout();
     state = const AsyncData(null);
   }

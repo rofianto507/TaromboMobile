@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/widgets/arsip_thumbnail.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/arsip_item.dart';
+import 'arsip_detail_sheet.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold   = Color(0xFFC8A24A);
@@ -160,7 +160,7 @@ class _ArsipCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/arsip/${item.id}'),
+        onTap: () => showArsipDetailSheet(context, item.id),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

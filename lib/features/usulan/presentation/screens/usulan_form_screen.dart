@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../shared/utils/odoo_json.dart';
+import '../../../../shared/widgets/lokasi_picker_screen.dart';
 import '../../../../shared/widgets/orang_search_sheet.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/usulan_provider.dart';
@@ -24,7 +26,6 @@ class UsulanFormScreen extends ConsumerStatefulWidget {
 class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   final _formKey = GlobalKey<FormState>();
   _Mode _mode = _Mode.tambah;
-  String _jenisEdit = 'koreksi'; // 'koreksi' atau 'lengkapi', hanya relevan saat _mode == edit
 
   // Tambah
   final _namaCtrl = TextEditingController();
@@ -39,6 +40,10 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   final _suamiNamaCtrl = TextEditingController();
   int? _suamiMargaId;
   List<Map<String, dynamic>> _margaList = [];
+
+  // Alamat & titik lokasi (opsional, berlaku untuk mode Tambah maupun Edit)
+  final _alamatCtrl = TextEditingController();
+  LatLng? _titikLokasi;
 
   // Bersama
   int? _punguanId;
@@ -131,6 +136,14 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     }
   }
 
+  Future<void> _pickLokasi() async {
+    final hasil = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(builder: (_) => LokasiPickerScreen(titikAwal: _titikLokasi)),
+    );
+    if (hasil != null) setState(() => _titikLokasi = hasil);
+  }
+
   Future<void> _pickFoto() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
     if (picked == null) return;
@@ -167,13 +180,17 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           sumberKet: _sumberCtrl.text.trim(),
           catatan: _catatanCtrl.text.trim(),
           fotoBase64: _fotoBase64,
+          usulAlamatJalan: _alamatCtrl.text.trim(),
+          usulLatitude: _titikLokasi?.latitude,
+          usulLongitude: _titikLokasi?.longitude,
         );
       } else {
         await service.submitEdit(
-          jenis: _jenisEdit,
+          jenis: 'koreksi',
           orangId: _target!['id'] as int,
           punguanId: _punguanId!,
           sumberKet: _sumberCtrl.text.trim(),
+          usulNama: _namaCtrl.text.trim(),
           usulJenisKelamin: _jenisKelamin,
           usulMasihHidup: _masihHidup,
           usulUrutan: _urutan,
@@ -181,6 +198,9 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           usulSuamiMargaId: _jenisKelamin == 'P' ? _suamiMargaId : null,
           catatan: _catatanCtrl.text.trim(),
           fotoBase64: _fotoBase64,
+          usulAlamatJalan: _alamatCtrl.text.trim(),
+          usulLatitude: _titikLokasi?.latitude,
+          usulLongitude: _titikLokasi?.longitude,
         );
       }
       if (!mounted) return;
@@ -198,6 +218,7 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     _suamiNamaCtrl.dispose();
     _sumberCtrl.dispose();
     _catatanCtrl.dispose();
+    _alamatCtrl.dispose();
     super.dispose();
   }
 
@@ -217,7 +238,7 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                     SegmentedButton<_Mode>(
                       segments: const [
                         ButtonSegment(value: _Mode.tambah, label: Text('Tambah Baru'), icon: Icon(Icons.person_add_alt_1_outlined)),
-                        ButtonSegment(value: _Mode.edit, label: Text('Koreksi/Lengkapi'), icon: Icon(Icons.edit_note_rounded)),
+                        ButtonSegment(value: _Mode.edit, label: Text('Perbarui Data'), icon: Icon(Icons.edit_note_rounded)),
                       ],
                       selected: {_mode},
                       onSelectionChanged: (s) => setState(() {
@@ -242,6 +263,14 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                       maxLines: 2,
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                     ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _alamatCtrl,
+                      decoration: const InputDecoration(labelText: 'Alamat Lengkap (opsional)', border: OutlineInputBorder()),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildLokasiPicker(),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _catatanCtrl,
@@ -298,15 +327,6 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
 
   List<Widget> _buildEditFields() {
     return [
-      SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(value: 'koreksi', label: Text('Koreksi')),
-          ButtonSegment(value: 'lengkapi', label: Text('Lengkapi')),
-        ],
-        selected: {_jenisEdit},
-        onSelectionChanged: (s) => setState(() => _jenisEdit = s.first),
-      ),
-      const SizedBox(height: 12),
       ListTile(
         contentPadding: EdgeInsets.zero,
         tileColor: const Color(0xFFFAF9F5),
@@ -374,6 +394,25 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           Expanded(child: RadioListTile<String>(value: 'P', title: Text('Perempuan'))),
         ],
       ),
+    );
+  }
+
+  Widget _buildLokasiPicker() {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      tileColor: const Color(0xFFFAF9F5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
+      leading: Icon(Icons.pin_drop_outlined, color: _titikLokasi != null ? _kGreen1 : Colors.grey.shade500),
+      title: Text(
+        _titikLokasi != null
+            ? '${_titikLokasi!.latitude.toStringAsFixed(5)}, ${_titikLokasi!.longitude.toStringAsFixed(5)}'
+            : 'Titik lokasi belum dipilih (opsional)',
+      ),
+      subtitle: const Text('Ketuk untuk pilih titik di peta'),
+      trailing: _titikLokasi != null
+          ? IconButton(icon: Icon(Icons.close_rounded, size: 18, color: Colors.grey.shade500), onPressed: () => setState(() => _titikLokasi = null))
+          : const Icon(Icons.map_outlined),
+      onTap: _pickLokasi,
     );
   }
 

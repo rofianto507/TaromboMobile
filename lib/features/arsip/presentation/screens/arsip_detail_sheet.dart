@@ -12,15 +12,24 @@ import '../../domain/entities/arsip_item.dart';
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold   = Color(0xFFC8A24A);
 
-class ArsipDetailScreen extends ConsumerStatefulWidget {
-  final int arsipId;
-  const ArsipDetailScreen({super.key, required this.arsipId});
-
-  @override
-  ConsumerState<ArsipDetailScreen> createState() => _ArsipDetailScreenState();
+Future<void> showArsipDetailSheet(BuildContext context, int arsipId) {
+  return showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _ArsipDetailSheet(arsipId: arsipId),
+  );
 }
 
-class _ArsipDetailScreenState extends ConsumerState<ArsipDetailScreen> {
+class _ArsipDetailSheet extends ConsumerStatefulWidget {
+  final int arsipId;
+  const _ArsipDetailSheet({required this.arsipId});
+
+  @override
+  ConsumerState<_ArsipDetailSheet> createState() => _ArsipDetailSheetState();
+}
+
+class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
   ArsipItem? _item;
   bool _loading = true;
   String? _error;
@@ -94,29 +103,49 @@ class _ArsipDetailScreenState extends ConsumerState<ArsipDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_item?.name ?? 'Arsip')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!, textAlign: TextAlign.center))
-              : _buildContent(_item!),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? Center(child: Text(_error!, textAlign: TextAlign.center))
+                        : _buildContent(_item!, scrollController),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildContent(ArsipItem item) {
+  Widget _buildContent(ArsipItem item, ScrollController scrollController) {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      controller: scrollController,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
         ArsipThumbnail(
           arsipId: item.id,
           jenis: item.jenis,
           icon: jenisArsipIcon(item.jenis),
-          height: 240,
+          height: 200,
           borderRadius: BorderRadius.circular(16),
         ),
         const SizedBox(height: 20),
-        Text(item.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _kGreen1)),
+        Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _kGreen1)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -129,17 +158,15 @@ class _ArsipDetailScreenState extends ConsumerState<ArsipDetailScreen> {
           ],
         ),
         const SizedBox(height: 20),
-        if (item.orangName != null)
-          _InfoRow(icon: Icons.person_outline_rounded, label: 'Terkait', value: item.orangName!),
-        if (item.sumber != null && item.sumber!.isNotEmpty)
-          _InfoRow(icon: Icons.source_outlined, label: 'Sumber', value: item.sumber!),
+        if (item.orangName != null) _InfoRow(icon: Icons.person_outline_rounded, label: 'Terkait', value: item.orangName!),
+        if (item.sumber != null && item.sumber!.isNotEmpty) _InfoRow(icon: Icons.source_outlined, label: 'Sumber', value: item.sumber!),
         if (item.keterangan != null && item.keterangan!.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           const Text('Keterangan', style: TextStyle(fontWeight: FontWeight.w700, color: _kGreen1)),
           const SizedBox(height: 6),
           Text(item.keterangan!, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
         ],
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
           height: 50,
@@ -163,6 +190,10 @@ class _InfoRow extends StatelessWidget {
   final String value;
   const _InfoRow({required this.icon, required this.label, required this.value});
 
+  // Sama seperti sheet detail Usulan — lebar label tetap supaya titik dua &
+  // value sejajar antar baris.
+  static const _lebarLabel = 80.0;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -172,16 +203,13 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: _kGold),
           const SizedBox(width: 10),
+          SizedBox(
+            width: _lebarLabel,
+            child: Text(label, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w600)),
+          ),
+          const Text(': ', style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w600)),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(color: Colors.grey.shade800, fontSize: 14),
-                children: [
-                  TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  TextSpan(text: value),
-                ],
-              ),
-            ),
+            child: Text(value, style: TextStyle(color: Colors.grey.shade800, fontSize: 14)),
           ),
         ],
       ),

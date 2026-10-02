@@ -5,3 +5,11 @@
 /// mengembalikan null seperti yang sering diasumsikan. Pakai helper ini di
 /// SETIAP field nullable dari respons call_kw, bukan cast langsung.
 String? asOdooString(dynamic v) => v is String ? v : null;
+
+/// Field Datetime Odoo dikirim sebagai string UTC naif ("2026-10-01 09:19:00",
+/// tanpa 'Z'/offset) — tambahkan 'Z' secara eksplisit sebelum parse supaya
+/// Dart tidak keliru menganggapnya waktu lokal device.
+DateTime? asOdooDateTime(dynamic v) {
+  if (v is! String || v.isEmpty) return null;
+  return DateTime.parse('${v.replaceFirst(' ', 'T')}Z').toLocal();
+}

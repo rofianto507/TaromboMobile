@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "878617772516",
+    "project_id": "tarombo-ddf9e",
+    "storage_bucket": "tarombo-ddf9e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878617772516:android:7339e135bc1272a0f707f1",
+        "android_client_info": {
+          "package_name": "id.selstudio.tarombo_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDw2RIayO9OWfh2UoruhpOk2NGUA8yuT4s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,10 +8,17 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/klaim/presentation/providers/klaim_provider.dart';
+import 'features/notifikasi/presentation/providers/notifikasi_provider.dart';
+import 'features/push/push_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
+  // Didaftarkan di sini (sebelum runApp), bukan ditunda sampai login — supaya
+  // notifikasi yang masuk selagi app benar-benar ter-kill tertangani sejak
+  // proses baru hidup, bukan baru aktif setelah user sempat buka app.
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   runApp(const ProviderScope(child: TaromboApp()));
 }
 
@@ -70,6 +79,10 @@ class _TaromboAppState extends ConsumerState<TaromboApp> with WidgetsBindingObse
     // sudah usang tanpa harus force-close aplikasi secara manual.
     ref.invalidate(klaimNotifierProvider);
     ref.invalidate(authNotifierProvider);
+    // Push notification bisa saja masuk selagi app di background — badge
+    // lonceng harus ikut ter-refresh begitu app aktif lagi, bukan cuma
+    // ketika ada pesan foreground.
+    ref.invalidate(notifikasiUnreadCountProvider);
   }
 
   @override

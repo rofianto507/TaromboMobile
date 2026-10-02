@@ -7,6 +7,7 @@ import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/utils/orang_labels.dart';
 import '../../../../shared/widgets/arsip_thumbnail.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
+import '../../../arsip/presentation/screens/arsip_detail_sheet.dart';
 import '../../../tarombo_tree/presentation/providers/pohon_provider.dart';
 import '../../domain/entities/orang_ringkas.dart';
 import '../providers/profile_provider.dart';
@@ -392,7 +393,7 @@ class _ArsipTab extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => context.push('/arsip/${item.id}'),
+            onTap: () => showArsipDetailSheet(context, item.id),
             child: Row(
               children: [
                 SizedBox(
