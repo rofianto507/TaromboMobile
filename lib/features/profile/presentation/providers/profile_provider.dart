@@ -4,25 +4,41 @@ import '../../../arsip/domain/entities/arsip_item.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/orang_ringkas.dart';
 
-final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, int>((ref, orangId) async {
+final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, int>((
+  ref,
+  orangId,
+) async {
   final api = ref.read(apiClientProvider);
 
-  final rows = await api.callKw(
-    model: 'tarombo.orang',
-    method: 'search_read',
-    args: [
-      [
-        ['id', '=', orangId]
-      ]
-    ],
-    kwargs: {
-      'fields': [
-        'name', 'jenis_kelamin', 'sundut', 'status', 'punguan_id', 'ayah_id', 'parent_path',
-        'domisili_lengkap', 'alamat_catatan', 'negara_id', 'suami_nama', 'suami_marga_id',
-      ],
-      'limit': 1,
-    },
-  ) as List;
+  final rows =
+      await api.callKw(
+            model: 'tarombo.orang',
+            method: 'search_read',
+            args: [
+              [
+                ['id', '=', orangId],
+              ],
+            ],
+            kwargs: {
+              'fields': [
+                'name',
+                'jenis_kelamin',
+                'sundut',
+                'status',
+                'punguan_id',
+                'ayah_id',
+                'parent_path',
+                'umur',
+                'domisili_lengkap',
+                'alamat_catatan',
+                'negara_id',
+                'suami_nama',
+                'suami_marga_id',
+              ],
+              'limit': 1,
+            },
+          )
+          as List;
   if (rows.isEmpty) {
     throw Exception('Data orang tidak ditemukan.');
   }
@@ -35,88 +51,158 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
       .where((s) => s.isNotEmpty)
       .map(int.parse)
       .toList();
-  final ancestorIds = pathIds.length > 1 ? pathIds.sublist(0, pathIds.length - 1).reversed.toList() : <int>[];
+  final ancestorIds = pathIds.length > 1
+      ? pathIds.sublist(0, pathIds.length - 1).reversed.toList()
+      : <int>[];
 
   final results = await Future.wait([
     // Leluhur
     ancestorIds.isEmpty
         ? Future.value(const <Map<String, dynamic>>[])
-        : api.callKw(
-            model: 'tarombo.orang',
-            method: 'search_read',
-            args: [
-              [
-                ['id', 'in', ancestorIds]
-              ]
-            ],
-            kwargs: {
-              'fields': ['id', 'name', 'sundut', 'jenis_kelamin', 'punguan_id', 'masih_hidup', 'anak_ids'],
-            },
-          ).then((r) => (r as List).cast<Map<String, dynamic>>()),
+        : api
+              .callKw(
+                model: 'tarombo.orang',
+                method: 'search_read',
+                args: [
+                  [
+                    ['id', 'in', ancestorIds],
+                  ],
+                ],
+                kwargs: {
+                  'fields': [
+                    'id',
+                    'name',
+                    'sundut',
+                    'jenis_kelamin',
+                    'punguan_id',
+                    'masih_hidup',
+                    'anak_ids',
+                  ],
+                },
+              )
+              .then((r) => (r as List).cast<Map<String, dynamic>>()),
     // Anak — sengaja HANYA anak langsung, bukan seluruh sub-pohon keturunan
     // diratakan jadi satu daftar panjang campur generasi.
-    api.callKw(
-      model: 'tarombo.orang',
-      method: 'search_read',
-      args: [
-        [
-          ['ayah_id', '=', orangId]
-        ]
-      ],
-      kwargs: {
-        'fields': ['id', 'name', 'sundut', 'jenis_kelamin', 'punguan_id', 'masih_hidup', 'anak_ids'],
-        'order': 'urutan',
-      },
-    ).then((r) => (r as List).cast<Map<String, dynamic>>()),
+    api
+        .callKw(
+          model: 'tarombo.orang',
+          method: 'search_read',
+          args: [
+            [
+              ['ayah_id', '=', orangId],
+            ],
+          ],
+          kwargs: {
+            'fields': [
+              'id',
+              'name',
+              'sundut',
+              'jenis_kelamin',
+              'punguan_id',
+              'masih_hidup',
+              'anak_ids',
+            ],
+            'order': 'urutan',
+          },
+        )
+        .then((r) => (r as List).cast<Map<String, dynamic>>()),
     // Pernikahan (kalau orang ini suami di satu/lebih pernikahan)
-    api.callKw(
-      model: 'tarombo.pernikahan',
-      method: 'search_read',
-      args: [
-        [
-          ['suami_id', '=', orangId]
-        ]
-      ],
-      kwargs: {
-        'fields': ['id', 'urutan', 'istri_nama', 'istri_marga_id', 'tahun', 'anak_ids'],
-        'order': 'urutan',
-      },
-    ).then((r) => (r as List).cast<Map<String, dynamic>>()),
+    api
+        .callKw(
+          model: 'tarombo.pernikahan',
+          method: 'search_read',
+          args: [
+            [
+              ['suami_id', '=', orangId],
+            ],
+          ],
+          kwargs: {
+            'fields': [
+              'id',
+              'urutan',
+              'istri_nama',
+              'istri_marga_id',
+              'tahun',
+              'anak_ids',
+            ],
+            'order': 'urutan',
+          },
+        )
+        .then((r) => (r as List).cast<Map<String, dynamic>>()),
     // Riwayat pendidikan
-    api.callKw(
-      model: 'tarombo.pendidikan',
-      method: 'search_read',
-      args: [
-        [
-          ['orang_id', '=', orangId]
-        ]
-      ],
-      kwargs: {'fields': ['jenjang', 'institusi', 'jurusan', 'tahun_masuk', 'tahun_lulus', 'lulus']},
-    ).then((r) => (r as List).cast<Map<String, dynamic>>()),
+    api
+        .callKw(
+          model: 'tarombo.pendidikan',
+          method: 'search_read',
+          args: [
+            [
+              ['orang_id', '=', orangId],
+            ],
+          ],
+          kwargs: {
+            'fields': [
+              'jenjang',
+              'institusi',
+              'jurusan',
+              'tahun_masuk',
+              'tahun_lulus',
+              'lulus',
+            ],
+          },
+        )
+        .then((r) => (r as List).cast<Map<String, dynamic>>()),
     // Riwayat pekerjaan
-    api.callKw(
-      model: 'tarombo.pekerjaan',
-      method: 'search_read',
-      args: [
-        [
-          ['orang_id', '=', orangId]
-        ]
-      ],
-      kwargs: {'fields': ['jabatan', 'instansi', 'bidang_id', 'tahun_mulai', 'tahun_selesai', 'sekarang']},
-    ).then((r) => (r as List).cast<Map<String, dynamic>>()),
+    api
+        .callKw(
+          model: 'tarombo.pekerjaan',
+          method: 'search_read',
+          args: [
+            [
+              ['orang_id', '=', orangId],
+            ],
+          ],
+          kwargs: {
+            'fields': [
+              'jabatan',
+              'instansi',
+              'bidang_id',
+              'tahun_mulai',
+              'tahun_selesai',
+              'sekarang',
+            ],
+          },
+        )
+        .then((r) => (r as List).cast<Map<String, dynamic>>()),
     // Arsip terkait — ir.rule sudah menyaring anggota hanya lihat yang publik
-    api.callKw(
-      model: 'tarombo.arsip',
-      method: 'search_read',
-      args: [
-        [
-          ['orang_id', '=', orangId]
-        ]
-      ],
-      kwargs: {'fields': ['id', 'name', 'jenis', 'orang_id', 'punguan_id', 'tahun_perkiraan']},
-    ).then((r) => (r as List).cast<Map<String, dynamic>>()),
+    api
+        .callKw(
+          model: 'tarombo.arsip',
+          method: 'search_read',
+          args: [
+            [
+              ['orang_id', '=', orangId],
+            ],
+          ],
+          kwargs: {
+            'fields': [
+              'id',
+              'name',
+              'jenis',
+              'orang_id',
+              'punguan_id',
+              'tahun_perkiraan',
+            ],
+          },
+        )
+        .then((r) => (r as List).cast<Map<String, dynamic>>()),
     // Titik lokasi domisili — cuma terisi kalau orang ini berbagi_lokasi=True
-    api.callKw(model: 'tarombo.orang', method: 'get_domisili_orang', args: [orangId]).then((r) => r as Map<String, dynamic>),
+    api
+        .callKw(
+          model: 'tarombo.orang',
+          method: 'get_domisili_orang',
+          args: [orangId],
+        )
+        .then((r) => r as Map<String, dynamic>),
   ]);
 
   final ancestorRows = results[0] as List<Map<String, dynamic>>;
@@ -130,44 +216,62 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
   final byId = {for (final r in ancestorRows) r['id'] as int: r};
   final leluhur = [
     for (var i = 0; i < ancestorIds.length; i++)
-      if (byId[ancestorIds[i]] != null) _toRingkas(byId[ancestorIds[i]]!, level: i + 1)
+      if (byId[ancestorIds[i]] != null)
+        _toRingkas(byId[ancestorIds[i]]!, level: i + 1),
   ];
   // level di sini dipakai sebagai urutan lahir ("Anak ke-1", "Anak ke-2", ...)
   // — beda makna dari level pada leluhur (jarak generasi), lihat komentar di
   // OrangRingkas.level.
-  final anak = [for (var i = 0; i < anakRows.length; i++) _toRingkas(anakRows[i], level: i + 1)];
+  final anak = [
+    for (var i = 0; i < anakRows.length; i++)
+      _toRingkas(anakRows[i], level: i + 1),
+  ];
 
   final pernikahan = pernikahanRows
-      .map((r) => PernikahanRingkas(
-            id: r['id'] as int,
-            urutan: r['urutan'] as int? ?? 1,
-            istriNama: asOdooString(r['istri_nama']) ?? '',
-            istriMarga: _m2oName(r['istri_marga_id']),
-            tahun: r['tahun'] == false ? null : r['tahun'] as int?,
-            jumlahAnak: (r['anak_ids'] as List? ?? const []).length,
-          ))
+      .map(
+        (r) => PernikahanRingkas(
+          id: r['id'] as int,
+          urutan: r['urutan'] as int? ?? 1,
+          istriNama: asOdooString(r['istri_nama']) ?? '',
+          istriMarga: _m2oName(r['istri_marga_id']),
+          tahun: r['tahun'] == false ? null : r['tahun'] as int?,
+          jumlahAnak: (r['anak_ids'] as List? ?? const []).length,
+        ),
+      )
       .toList();
 
   final pendidikan = pendidikanRows
-      .map((r) => PendidikanRingkas(
-            jenjang: asOdooString(r['jenjang']),
-            institusi: asOdooString(r['institusi']) ?? '-',
-            jurusan: asOdooString(r['jurusan']),
-            tahunMasuk: r['tahun_masuk'] == false ? null : r['tahun_masuk'] as int?,
-            tahunLulus: r['tahun_lulus'] == false ? null : r['tahun_lulus'] as int?,
-            lulus: r['lulus'] == true,
-          ))
+      .map(
+        (r) => PendidikanRingkas(
+          jenjang: asOdooString(r['jenjang']),
+          institusi: asOdooString(r['institusi']) ?? '-',
+          jurusan: asOdooString(r['jurusan']),
+          tahunMasuk: r['tahun_masuk'] == false
+              ? null
+              : r['tahun_masuk'] as int?,
+          tahunLulus: r['tahun_lulus'] == false
+              ? null
+              : r['tahun_lulus'] as int?,
+          lulus: r['lulus'] == true,
+        ),
+      )
       .toList();
 
   final pekerjaan = pekerjaanRows
-      .map((r) => PekerjaanRingkas(
-            jabatan: asOdooString(r['jabatan']) ?? '-',
-            instansi: asOdooString(r['instansi']),
-            bidang: _m2oName(r['bidang_id']),
-            tahunMulai: r['tahun_mulai'] == false ? null : r['tahun_mulai'] as int?,
-            tahunSelesai: r['tahun_selesai'] == false ? null : r['tahun_selesai'] as int?,
-            sekarang: r['sekarang'] == true,
-          ))
+      .map(
+        (r) => PekerjaanRingkas(
+          jabatan: asOdooString(r['jabatan']) ?? '-',
+          instansi: asOdooString(r['instansi']),
+          bidang: _m2oName(r['bidang_id']),
+          tahunMulai: r['tahun_mulai'] == false
+              ? null
+              : r['tahun_mulai'] as int?,
+          tahunSelesai: r['tahun_selesai'] == false
+              ? null
+              : r['tahun_selesai'] as int?,
+          sekarang: r['sekarang'] == true,
+        ),
+      )
       .toList();
 
   final arsip = arsipRows.map(ArsipItem.fromJson).toList();
@@ -178,8 +282,12 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
     catatan: asOdooString(row['alamat_catatan']),
     negara: _m2oName(row['negara_id']),
     berbagiLokasi: domisiliMap['berbagi_lokasi'] == true,
-    lat: domisiliMap['lat'] is num ? (domisiliMap['lat'] as num).toDouble() : null,
-    lng: domisiliMap['lng'] is num ? (domisiliMap['lng'] as num).toDouble() : null,
+    lat: domisiliMap['lat'] is num
+        ? (domisiliMap['lat'] as num).toDouble()
+        : null,
+    lng: domisiliMap['lng'] is num
+        ? (domisiliMap['lng'] as num).toDouble()
+        : null,
   );
 
   return ProfileDetail(
@@ -187,6 +295,7 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
     name: row['name'] as String,
     jenisKelamin: row['jenis_kelamin'] as String,
     sundut: row['sundut'] as int,
+    umur: row['umur'] == false ? null : row['umur'] as int?,
     status: asOdooString(row['status']) ?? 'rumpang',
     punguan: _m2oName(row['punguan_id']),
     ayahId: _m2oId(row['ayah_id']),
@@ -203,7 +312,8 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
   );
 });
 
-OrangRingkas _toRingkas(Map<String, dynamic> r, {int level = 0}) => OrangRingkas(
+OrangRingkas _toRingkas(Map<String, dynamic> r, {int level = 0}) =>
+    OrangRingkas(
       id: r['id'] as int,
       name: r['name'] as String,
       sundut: r['sundut'] as int,
@@ -214,5 +324,6 @@ OrangRingkas _toRingkas(Map<String, dynamic> r, {int level = 0}) => OrangRingkas
       jumlahAnak: (r['anak_ids'] as List? ?? const []).length,
     );
 
-String? _m2oName(dynamic v) => (v is List && v.length > 1) ? v[1] as String : null;
+String? _m2oName(dynamic v) =>
+    (v is List && v.length > 1) ? v[1] as String : null;
 int? _m2oId(dynamic v) => (v is List && v.isNotEmpty) ? v[0] as int : null;

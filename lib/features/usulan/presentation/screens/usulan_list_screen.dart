@@ -6,7 +6,7 @@ import '../providers/usulan_provider.dart';
 import 'usulan_detail_sheet.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold   = Color(0xFFC8A24A);
+const _kGold = Color(0xFFC8A24A);
 
 class UsulanListScreen extends ConsumerWidget {
   const UsulanListScreen({super.key});
@@ -31,12 +31,22 @@ class UsulanListScreen extends ConsumerWidget {
         onRefresh: () async => ref.invalidate(usulanListProvider),
         child: listAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Gagal memuat usulan.\n$e', textAlign: TextAlign.center)),
+          error: (e, _) => Center(
+            child: Text(
+              'Gagal memuat usulan.\n$e',
+              textAlign: TextAlign.center,
+            ),
+          ),
           data: (items) => items.isEmpty
               ? ListView(
                   children: const [
                     SizedBox(height: 120),
-                    Center(child: Text('Belum ada usulan. Ketuk "Usulan Baru" untuk mengajukan.', style: TextStyle(color: Colors.grey))),
+                    Center(
+                      child: Text(
+                        'Belum ada usulan. Ketuk "Usulan Baru" untuk mengajukan.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
                   ],
                 )
               : ListView.separated(
@@ -82,32 +92,67 @@ class _UsulanCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200)),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade200),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700, color: _kGreen1)),
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: _kGreen1,
+                      ),
+                    ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: _color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-                    child: Text(usulanStateLabel(item.state), style: TextStyle(color: _color, fontSize: 11, fontWeight: FontWeight.w700)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      usulanStateLabel(item.state),
+                      style: TextStyle(
+                        color: _color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(jenisUsulanLabel(item.jenis), style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+              Text(
+                jenisUsulanLabel(item.jenis),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
               if (item.targetName != null)
                 Text(
-                  item.jenis == 'tambah' ? 'Anak dari ${item.targetName}' : 'Untuk: ${item.targetName}',
+                  item.jenis == 'tambah'
+                      ? 'Anak dari ${item.targetName}'
+                      : 'Untuk: ${item.targetName}',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                 ),
-              if (item.state == UsulanState.ditolak && item.alasanTolak != null && item.alasanTolak!.isNotEmpty) ...[
+              if (item.state == UsulanState.ditolak &&
+                  item.alasanTolak != null &&
+                  item.alasanTolak!.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text('Alasan: ${item.alasanTolak}', style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontStyle: FontStyle.italic)),
+                Text(
+                  'Alasan: ${item.alasanTolak}',
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
               ],
             ],
           ),

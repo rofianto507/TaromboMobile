@@ -16,8 +16,10 @@ class UsulanDetail {
   final String? usulJenisKelamin;
   final String? usulMasihHidup; // 'ya'/'tidak'/null
   final int? usulUrutan;
-  final int? usulTahunLahir;
-  final String? usulWilayah; // gabungan provinsi/kabupaten/kecamatan/desa yang terisi
+  final DateTime? usulTanggalLahir;
+  final DateTime? usulTanggalWafat;
+  final String?
+  usulWilayah; // gabungan provinsi/kabupaten/kecamatan/desa yang terisi
   final String? usulAlamatJalan;
   final double? usulLatitude;
   final double? usulLongitude;
@@ -44,7 +46,8 @@ class UsulanDetail {
     this.usulJenisKelamin,
     this.usulMasihHidup,
     this.usulUrutan,
-    this.usulTahunLahir,
+    this.usulTanggalLahir,
+    this.usulTanggalWafat,
     this.usulWilayah,
     this.usulAlamatJalan,
     this.usulLatitude,

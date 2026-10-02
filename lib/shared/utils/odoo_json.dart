@@ -13,3 +13,11 @@ DateTime? asOdooDateTime(dynamic v) {
   if (v is! String || v.isEmpty) return null;
   return DateTime.parse('${v.replaceFirst(' ', 'T')}Z').toLocal();
 }
+
+/// Field Date Odoo (tanpa jam, mis. "1923-01-01") — TIDAK boleh lewat
+/// asOdooDateTime: tidak ada komponen jam untuk diubah ke UTC, dan menambah
+/// 'Z' langsung ke string tanggal polos bisa gagal di-parse.
+DateTime? asOdooDate(dynamic v) {
+  if (v is! String || v.isEmpty) return null;
+  return DateTime.tryParse(v);
+}

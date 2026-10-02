@@ -91,7 +91,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isKlaimRoute = loc.startsWith('/klaim');
 
       if (status == KlaimStatus.disetujui) {
-        if (isKlaimRoute || loc == '/login' || loc == '/register' || loc == '/splash') {
+        if (isKlaimRoute ||
+            loc == '/login' ||
+            loc == '/register' ||
+            loc == '/splash') {
           return '/home';
         }
         return null;
@@ -106,7 +109,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // (mengubah data bersama) sengaja DIKECUALIKAN dari pelonggaran ini —
       // tetap dikunci sampai identitas benar-benar terverifikasi pengurus.
       final isUsulanRoute = loc.startsWith('/usulan');
-      final reminderTarget = status == KlaimStatus.belum ? '/klaim' : '/klaim/pending';
+      final reminderTarget = status == KlaimStatus.belum
+          ? '/klaim'
+          : '/klaim/pending';
 
       if (isUsulanRoute) {
         return isKlaimRoute ? null : reminderTarget;
@@ -119,12 +124,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/splash', name: 'splash', builder: (_, _) => const SplashScreen()),
-      GoRoute(path: '/login', name: 'login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/register', name: 'register', builder: (_, _) => const RegistrationScreen()),
-      GoRoute(path: '/klaim', name: 'klaim', builder: (_, _) => const KlaimSearchScreen()),
-      GoRoute(path: '/klaim/orang-baru', name: 'klaimOrangBaru', builder: (_, _) => const KlaimOrangBaruScreen()),
-      GoRoute(path: '/klaim/pending', name: 'klaimPending', builder: (_, _) => const KlaimPendingScreen()),
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (_, _) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (_, _) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        name: 'register',
+        builder: (_, _) => const RegistrationScreen(),
+      ),
+      GoRoute(
+        path: '/klaim',
+        name: 'klaim',
+        builder: (_, _) => const KlaimSearchScreen(),
+      ),
+      GoRoute(
+        path: '/klaim/orang-baru',
+        name: 'klaimOrangBaru',
+        builder: (_, _) => const KlaimOrangBaruScreen(),
+      ),
+      GoRoute(
+        path: '/klaim/pending',
+        name: 'klaimPending',
+        builder: (_, _) => const KlaimPendingScreen(),
+      ),
 
       // 3 tab utama (Beranda - Tarombo - Akun), tiap tab punya stack navigasi
       // sendiri lewat StatefulShellRoute.indexedStack — pindah tab TIDAK
@@ -132,15 +161,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => MainShellScreen(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/home', name: 'home', builder: (_, _) => const HomeScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/tarombo', name: 'taromboTree', builder: (_, _) => const TaromboTreeScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/akun', name: 'akun', builder: (_, _) => const AccountScreen()),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                name: 'home',
+                builder: (_, _) => const HomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tarombo',
+                name: 'taromboTree',
+                builder: (_, _) => const TaromboTreeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/akun',
+                name: 'akun',
+                builder: (_, _) => const AccountScreen(),
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -164,7 +211,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profil/:id',
         name: 'profilDetail',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (_, state) => ProfileDetailScreen(orangId: int.parse(state.pathParameters['id']!)),
+        builder: (_, state) => ProfileDetailScreen(
+          orangId: int.parse(state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: '/partuturan',
@@ -182,7 +231,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/usulan/baru',
         name: 'usulanBaru',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (_, _) => const UsulanFormScreen(),
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return UsulanFormScreen(
+            initialTargetId: extra?['targetId'] as int?,
+            initialTargetName: extra?['targetName'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: '/direktori-keahlian',

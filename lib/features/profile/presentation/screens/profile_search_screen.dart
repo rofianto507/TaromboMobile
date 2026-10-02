@@ -12,7 +12,8 @@ class ProfileSearchScreen extends ConsumerStatefulWidget {
   const ProfileSearchScreen({super.key});
 
   @override
-  ConsumerState<ProfileSearchScreen> createState() => _ProfileSearchScreenState();
+  ConsumerState<ProfileSearchScreen> createState() =>
+      _ProfileSearchScreenState();
 }
 
 class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
@@ -32,20 +33,29 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
     });
     try {
       final api = ref.read(apiClientProvider);
-      final rows = await api.callKw(
-        model: 'tarombo.orang',
-        method: 'search_read',
-        args: [
-          [
-            ['name', 'ilike', q.trim()],
-          ]
-        ],
-        kwargs: {
-          'fields': ['id', 'name', 'sundut', 'jenis_kelamin', 'punguan_id', 'status'],
-          'limit': 30,
-          'order': 'name',
-        },
-      ) as List;
+      final rows =
+          await api.callKw(
+                model: 'tarombo.orang',
+                method: 'search_read',
+                args: [
+                  [
+                    ['name', 'ilike', q.trim()],
+                  ],
+                ],
+                kwargs: {
+                  'fields': [
+                    'id',
+                    'name',
+                    'sundut',
+                    'jenis_kelamin',
+                    'punguan_id',
+                    'status',
+                  ],
+                  'limit': 30,
+                  'order': 'name',
+                },
+              )
+              as List;
       setState(() => _results = rows.cast<Map<String, dynamic>>());
     } catch (_) {
       setState(() => _error = 'Gagal memuat data. Periksa koneksi Anda.');
@@ -78,7 +88,9 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
                 prefixIcon: const Icon(Icons.search, color: _kGold),
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -86,25 +98,46 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(child: Text(_error!, style: TextStyle(color: Colors.red.shade700)))
-                    : _ctrl.text.trim().length < 2
-                        ? const Center(child: Text('Ketik minimal 2 huruf untuk mencari.', style: TextStyle(color: Colors.grey)))
-                        : _results.isEmpty
-                            ? const Center(child: Text('Tidak ditemukan.', style: TextStyle(color: Colors.grey)))
-                            : ListView.separated(
-                                itemCount: _results.length,
-                                separatorBuilder: (_, _) => const Divider(height: 1),
-                                itemBuilder: (_, i) {
-                                  final o = _results[i];
-                                  return ListTile(
-                                    leading: OrangAvatar(orangId: o['id'] as int, jenisKelamin: o['jenis_kelamin'] as String, radius: 20),
-                                    title: Text(o['name'] as String),
-                                    subtitle: Text('Sundut ${o['sundut']} • ${statusLabel(asOdooString(o['status']))}'),
-                                    trailing: const Icon(Icons.chevron_right),
-                                    onTap: () => context.push('/profil/${o['id']}'),
-                                  );
-                                },
-                              ),
+                ? Center(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
+                  )
+                : _ctrl.text.trim().length < 2
+                ? const Center(
+                    child: Text(
+                      'Ketik minimal 2 huruf untuk mencari.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : _results.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Tidak ditemukan.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: _results.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final o = _results[i];
+                      return ListTile(
+                        leading: OrangAvatar(
+                          orangId: o['id'] as int,
+                          jenisKelamin: o['jenis_kelamin'] as String,
+                          radius: 20,
+                        ),
+                        title: Text(o['name'] as String),
+                        subtitle: Text(
+                          'Sundut ${o['sundut']} • ${statusLabel(asOdooString(o['status']))}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/profil/${o['id']}'),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

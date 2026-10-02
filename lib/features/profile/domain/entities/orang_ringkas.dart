@@ -10,7 +10,8 @@ class OrangRingkas {
   // untuk anak = urutan lahir ("anak ke-N", dari field `urutan` backend).
   final int level;
   final bool masihHidup;
-  final int jumlahAnak; // supaya kelihatan cabang ini masih berlanjut atau tidak, tanpa perlu buka profilnya
+  final int
+  jumlahAnak; // supaya kelihatan cabang ini masih berlanjut atau tidak, tanpa perlu buka profilnya
 
   const OrangRingkas({
     required this.id,
@@ -102,12 +103,14 @@ class ProfileDetail {
   final int id;
   final String name;
   final int sundut;
+  final int? umur;
   final String jenisKelamin;
   final String status;
   final String? punguan;
   final int? ayahId;
   final String? ayahName;
-  final List<OrangRingkas> leluhur; // urut dari ayah (terdekat) ke leluhur puncak
+  final List<OrangRingkas>
+  leluhur; // urut dari ayah (terdekat) ke leluhur puncak
   // Sengaja HANYA anak langsung (bukan seluruh sub-pohon keturunan diratakan)
   // — daftar keturunan sampai berpuluh-puluh generasi campur aduk bikin
   // halaman ini terasa penuh data yang tidak relevan. Untuk lihat keturunan
@@ -128,6 +131,7 @@ class ProfileDetail {
     required this.id,
     required this.name,
     required this.sundut,
+    this.umur,
     required this.jenisKelamin,
     required this.status,
     this.punguan,
