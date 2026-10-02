@@ -12,8 +12,8 @@ import '../../domain/entities/pohon_node.dart';
 import '../providers/pohon_provider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold   = Color(0xFFC8A24A);
-const _kPink   = Color(0xFFE0729A);
+const _kGold = Color(0xFFC8A24A);
+const _kPink = Color(0xFFE0729A);
 
 // Ukuran kartu node SENGAJA tetap (bukan dihitung dari widget asli) —
 // graphview butuh node.size TERISI SEBELUM algoritma jalan (dipakai untuk
@@ -67,7 +67,13 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tarombo'),
+        title: const Row(
+          children: [
+            Icon(Icons.account_tree_outlined, size: 22),
+            SizedBox(width: 10),
+            Text('Tarombo'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search_rounded),
@@ -77,29 +83,67 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
           const NotifikasiButton(),
         ],
       ),
-      body: pohonAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Gagal memuat pohon silsilah.\n$e', textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => ref.invalidate(pohonNotifierProvider),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Coba Lagi'),
+      body: Stack(
+        children: [
+          // Sama seperti Beranda/Akun — tekstur Danau Toba di-tint hijau &
+          // fade di tepi atas, dipatok ke dasar layar.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.white],
+                stops: [0.0, 0.5],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: Opacity(
+                opacity: 0.35,
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.mode(
+                    _kGreen1,
+                    BlendMode.color,
+                  ),
+                  child: Image.asset(
+                    'assets/images/toba.png',
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-        data: (root) {
-          if (root == null) return _EmptyState(onCari: () => _bukaPencarian(context, ref));
-          return _buildTree(context, root, token);
-        },
+          pohonAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Gagal memuat pohon silsilah.\n$e',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => ref.invalidate(pohonNotifierProvider),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            data: (root) {
+              if (root == null)
+                return _EmptyState(onCari: () => _bukaPencarian(context, ref));
+              return _buildTree(context, root, token);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -169,7 +213,10 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
               children: [
                 CustomPaint(
                   size: canvasSize,
-                  painter: _PohonEdgePainter(graph: graph, offset: Offset(dx, dy)),
+                  painter: _PohonEdgePainter(
+                    graph: graph,
+                    offset: Offset(dx, dy),
+                  ),
                 ),
                 for (final node in graph.nodes)
                   Positioned(
@@ -177,21 +224,25 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
                     top: node.position.dy + dy,
                     width: _kCardW,
                     height: _kCardH,
-                    child: Builder(builder: (context) {
-                      final data = byId[node.key!.value as int]!;
-                      return _PohonCard(
-                        key: ValueKey(data.id),
-                        data: data,
-                        token: token,
-                        onTap: () {
-                          if (data.tertutup) {
-                            ref.read(pohonNotifierProvider.notifier).pindahFokus(data.id);
-                          } else {
-                            context.push('/profil/${data.id}');
-                          }
-                        },
-                      );
-                    }),
+                    child: Builder(
+                      builder: (context) {
+                        final data = byId[node.key!.value as int]!;
+                        return _PohonCard(
+                          key: ValueKey(data.id),
+                          data: data,
+                          token: token,
+                          onTap: () {
+                            if (data.tertutup) {
+                              ref
+                                  .read(pohonNotifierProvider.notifier)
+                                  .pindahFokus(data.id);
+                            } else {
+                              context.push('/profil/${data.id}');
+                            }
+                          },
+                        );
+                      },
+                    ),
                   ),
               ],
             ),
@@ -205,7 +256,8 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
           bottom: 16,
           child: _PohonControls(
             isOverride: ref.watch(pohonRootIdProvider) != null,
-            onRecenter: () => ref.read(pohonNotifierProvider.notifier).kembaliKeDiriSendiri(),
+            onRecenter: () =>
+                ref.read(pohonNotifierProvider.notifier).kembaliKeDiriSendiri(),
             onRefresh: () => ref.invalidate(pohonNotifierProvider),
           ),
         ),
@@ -231,7 +283,9 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
     final id = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => const _PencarianFokusSheet(),
     );
     if (id != null) {
@@ -265,15 +319,27 @@ class _PohonControls extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (isOverride) ...[
-          _tombol(icon: Icons.my_location_rounded, tooltip: 'Kembali ke posisi saya', onTap: onRecenter),
+          _tombol(
+            icon: Icons.my_location_rounded,
+            tooltip: 'Kembali ke posisi saya',
+            onTap: onRecenter,
+          ),
           const SizedBox(height: 10),
         ],
-        _tombol(icon: Icons.refresh_rounded, tooltip: 'Muat ulang pohon', onTap: onRefresh),
+        _tombol(
+          icon: Icons.refresh_rounded,
+          tooltip: 'Muat ulang pohon',
+          onTap: onRefresh,
+        ),
       ],
     );
   }
 
-  Widget _tombol({required IconData icon, required String tooltip, required VoidCallback onTap}) {
+  Widget _tombol({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -309,8 +375,10 @@ class _PohonEdgePainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     for (final edge in graph.edges) {
-      final from = edge.source.position + offset + const Offset(_kCardW / 2, _kCardH);
-      final to = edge.destination.position + offset + const Offset(_kCardW / 2, 0);
+      final from =
+          edge.source.position + offset + const Offset(_kCardW / 2, _kCardH);
+      final to =
+          edge.destination.position + offset + const Offset(_kCardW / 2, 0);
       final midY = (from.dy + to.dy) / 2;
       final path = Path()
         ..moveTo(from.dx, from.dy)
@@ -320,14 +388,20 @@ class _PohonEdgePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PohonEdgePainter oldDelegate) => oldDelegate.graph != graph;
+  bool shouldRepaint(covariant _PohonEdgePainter oldDelegate) =>
+      oldDelegate.graph != graph;
 }
 
 class _PohonCard extends StatelessWidget {
   final PohonNode data;
   final String? token;
   final VoidCallback onTap;
-  const _PohonCard({super.key, required this.data, required this.token, required this.onTap});
+  const _PohonCard({
+    super.key,
+    required this.data,
+    required this.token,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -340,8 +414,17 @@ class _PohonCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: data.selected ? _kGold : Colors.grey.shade300, width: data.selected ? 2.5 : 1),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+          border: Border.all(
+            color: data.selected ? _kGold : Colors.grey.shade300,
+            width: data.selected ? 2.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -349,7 +432,12 @@ class _PohonCard extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                _FotoOrang(orangId: data.id, jenisKelamin: data.jenisKelamin, token: token, radius: 24),
+                _FotoOrang(
+                  orangId: data.id,
+                  jenisKelamin: data.jenisKelamin,
+                  token: token,
+                  radius: 24,
+                ),
                 // Ada KETURUNAN di bawah yang tidak ditampilkan (batas
                 // kedalaman/jumlah simpul, atau saudara yang sengaja
                 // ditutup) — beda arah dari hasMoreAtas, jadi ikon & posisi
@@ -360,8 +448,15 @@ class _PohonCard extends StatelessWidget {
                     bottom: -2,
                     child: Container(
                       padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(color: _kGold, shape: BoxShape.circle),
-                      child: const Icon(Icons.add_rounded, size: 12, color: Colors.white),
+                      decoration: const BoxDecoration(
+                        color: _kGold,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.add_rounded,
+                        size: 12,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 // Ada LELUHUR di atas node ini yang tidak ditampilkan (cuma
@@ -374,8 +469,15 @@ class _PohonCard extends StatelessWidget {
                     top: -2,
                     child: Container(
                       padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(color: _kGreen1, shape: BoxShape.circle),
-                      child: const Icon(Icons.arrow_upward_rounded, size: 12, color: Colors.white),
+                      decoration: const BoxDecoration(
+                        color: _kGreen1,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 12,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
               ],
@@ -386,10 +488,17 @@ class _PohonCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _kGreen1),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _kGreen1,
+              ),
             ),
             const SizedBox(height: 2),
-            Text('Sundut ${data.sundut}', style: TextStyle(fontSize: 9, color: warnaGender)),
+            Text(
+              'Sundut ${data.sundut}',
+              style: TextStyle(fontSize: 9, color: warnaGender),
+            ),
           ],
         ),
       ),
@@ -404,13 +513,24 @@ class _FotoOrang extends StatelessWidget {
   final String jenisKelamin;
   final String? token;
   final double radius;
-  const _FotoOrang({required this.orangId, required this.jenisKelamin, required this.token, this.radius = 24});
+  const _FotoOrang({
+    required this.orangId,
+    required this.jenisKelamin,
+    required this.token,
+    this.radius = 24,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final fallbackIcon = jenisKelamin == 'P' ? Icons.woman_rounded : Icons.man_rounded;
+    final fallbackIcon = jenisKelamin == 'P'
+        ? Icons.woman_rounded
+        : Icons.man_rounded;
     if (!kIsWeb && token == null) {
-      return CircleAvatar(radius: radius, backgroundColor: _kGold.withValues(alpha: 0.15), child: Icon(fallbackIcon, color: _kGreen1));
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: _kGold.withValues(alpha: 0.15),
+        child: Icon(fallbackIcon, color: _kGreen1),
+      );
     }
     final url = '${AppConfig.baseUrl}/web/image/tarombo.orang/$orangId/foto';
     return ClipOval(
@@ -420,8 +540,15 @@ class _FotoOrang extends StatelessWidget {
         width: radius * 2,
         height: radius * 2,
         fit: BoxFit.cover,
-        placeholder: (_, _) => CircleAvatar(radius: radius, backgroundColor: _kGold.withValues(alpha: 0.15)),
-        errorWidget: (_, _, _) => CircleAvatar(radius: radius, backgroundColor: _kGold.withValues(alpha: 0.15), child: Icon(fallbackIcon, color: _kGreen1)),
+        placeholder: (_, _) => CircleAvatar(
+          radius: radius,
+          backgroundColor: _kGold.withValues(alpha: 0.15),
+        ),
+        errorWidget: (_, _, _) => CircleAvatar(
+          radius: radius,
+          backgroundColor: _kGold.withValues(alpha: 0.15),
+          child: Icon(fallbackIcon, color: _kGreen1),
+        ),
       ),
     );
   }
@@ -439,11 +566,19 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.account_tree_outlined, size: 64, color: _kGreen1.withValues(alpha: 0.4)),
+            Icon(
+              Icons.account_tree_outlined,
+              size: 64,
+              color: _kGreen1.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Belum Ada Pohon untuk Ditampilkan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kGreen1),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: _kGreen1,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -451,7 +586,11 @@ class _EmptyState extends StatelessWidget {
               'Identitas Anda belum tertaut ke data anggota. Cari nama seseorang '
               'untuk mulai menjelajahi pohon silsilah dari orang itu.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.5),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
@@ -471,7 +610,8 @@ class _PencarianFokusSheet extends ConsumerStatefulWidget {
   const _PencarianFokusSheet();
 
   @override
-  ConsumerState<_PencarianFokusSheet> createState() => _PencarianFokusSheetState();
+  ConsumerState<_PencarianFokusSheet> createState() =>
+      _PencarianFokusSheetState();
 }
 
 class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
@@ -487,16 +627,22 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
     setState(() => _loading = true);
     try {
       final api = ref.read(apiClientProvider);
-      final rows = await api.callKw(
-        model: 'tarombo.orang',
-        method: 'search_read',
-        args: [
-          [
-            ['name', 'ilike', q.trim()]
-          ]
-        ],
-        kwargs: {'fields': ['id', 'name', 'sundut', 'jenis_kelamin'], 'limit': 20, 'order': 'name'},
-      ) as List;
+      final rows =
+          await api.callKw(
+                model: 'tarombo.orang',
+                method: 'search_read',
+                args: [
+                  [
+                    ['name', 'ilike', q.trim()],
+                  ],
+                ],
+                kwargs: {
+                  'fields': ['id', 'name', 'sundut', 'jenis_kelamin'],
+                  'limit': 20,
+                  'order': 'name',
+                },
+              )
+              as List;
       if (mounted) setState(() => _hasil = rows.cast<Map<String, dynamic>>());
     } catch (_) {
       if (mounted) setState(() => _hasil = []);
@@ -514,7 +660,9 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.75,
         child: Column(
@@ -530,7 +678,10 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
                   prefixIcon: const Icon(Icons.search, color: _kGold),
                   filled: true,
                   fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
@@ -538,28 +689,35 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _hasil.isEmpty
-                      ? Center(
-                          child: Text(
-                            _ctrl.text.trim().length < 2 ? 'Ketik minimal 2 huruf untuk mencari.' : 'Tidak ditemukan.',
-                            style: const TextStyle(color: Colors.grey),
+                  ? Center(
+                      child: Text(
+                        _ctrl.text.trim().length < 2
+                            ? 'Ketik minimal 2 huruf untuk mencari.'
+                            : 'Tidak ditemukan.',
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: _hasil.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (_, i) {
+                        final o = _hasil[i];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: _kGold.withValues(alpha: 0.15),
+                            child: Icon(
+                              o['jenis_kelamin'] == 'P'
+                                  ? Icons.woman_rounded
+                                  : Icons.man_rounded,
+                              color: _kGreen1,
+                            ),
                           ),
-                        )
-                      : ListView.separated(
-                          itemCount: _hasil.length,
-                          separatorBuilder: (_, _) => const Divider(height: 1),
-                          itemBuilder: (_, i) {
-                            final o = _hasil[i];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: _kGold.withValues(alpha: 0.15),
-                                child: Icon(o['jenis_kelamin'] == 'P' ? Icons.woman_rounded : Icons.man_rounded, color: _kGreen1),
-                              ),
-                              title: Text(o['name'] as String),
-                              subtitle: Text('Sundut ${o['sundut']}'),
-                              onTap: () => Navigator.pop(context, o['id'] as int),
-                            );
-                          },
-                        ),
+                          title: Text(o['name'] as String),
+                          subtitle: Text('Sundut ${o['sundut']}'),
+                          onTap: () => Navigator.pop(context, o['id'] as int),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
