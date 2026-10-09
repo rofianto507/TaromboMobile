@@ -6,19 +6,24 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/widgets/arsip_thumbnail.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../providers/arsip_provider.dart';
 import '../../domain/entities/arsip_item.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold   = Color(0xFFC8A24A);
 
-Future<void> showArsipDetailSheet(BuildContext context, int arsipId) {
-  return showModalBottomSheet(
+/// Mengembalikan true bila arsip dihapus dari dalam sheet ini, supaya pemanggil
+/// memuat ulang daftarnya.
+Future<bool> showArsipDetailSheet(BuildContext context, int arsipId) async {
+  final deleted = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _ArsipDetailSheet(arsipId: arsipId),
   );
+  return deleted == true;
 }
 
 class _ArsipDetailSheet extends ConsumerStatefulWidget {
@@ -34,6 +39,7 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
   bool _loading = true;
   String? _error;
   bool _opening = false;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -57,7 +63,7 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
           ]
         ],
         kwargs: {
-          'fields': ['id', 'name', 'jenis', 'orang_id', 'punguan_id', 'tahun_perkiraan', 'sumber', 'keterangan', 'berkas_nama'],
+          'fields': ['id', 'name', 'jenis', 'orang_id', 'punguan_id', 'tahun_perkiraan', 'sumber', 'keterangan', 'berkas_nama', 'create_uid'],
         },
       ) as List;
       if (rows.isEmpty) {
@@ -98,6 +104,29 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
       }
     } finally {
       if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  Future<void> _hapus() async {
+    final yakin = await showAppConfirmDialog(
+      context,
+      title: 'Hapus arsip?',
+      message: '"${_item?.name ?? 'Arsip ini'}" akan dihapus permanen.',
+      icon: Icons.delete_outline_rounded,
+      confirmLabel: 'Hapus',
+      destructive: true,
+    );
+    if (!yakin || !mounted) return;
+    setState(() => _deleting = true);
+    try {
+      await ref.read(arsipRepositoryProvider).hapus(widget.arsipId);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menghapus arsip. Coba lagi.')),
+      );
     }
   }
 
@@ -179,6 +208,27 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
             label: Text(_opening ? 'Mengunduh...' : 'Buka Berkas'),
           ),
         ),
+        // Hanya pengunggah arsip (bukan arsip unggahan pengurus) yang boleh menghapus;
+        // ir.rule backend juga menegakkan hal yang sama.
+        if (item.createUid != null &&
+            item.createUid == ref.watch(authNotifierProvider).valueOrNull?.id) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade700,
+                side: BorderSide(color: Colors.red.shade300),
+              ),
+              onPressed: _deleting ? null : _hapus,
+              icon: _deleting
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  : const Icon(Icons.delete_outline_rounded),
+              label: Text(_deleting ? 'Menghapus...' : 'Hapus Arsip'),
+            ),
+          ),
+        ],
       ],
     );
   }

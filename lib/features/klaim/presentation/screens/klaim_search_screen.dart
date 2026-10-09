@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/klaim_provider.dart';
 
@@ -59,18 +60,15 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
   }
 
   Future<void> _klaim(Map<String, dynamic> orang) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Klaim'),
-        content: Text('Apakah "${orang['name']}" adalah diri Anda sendiri di pohon keluarga?\n\nPengurus akan meninjau klaim ini sebelum disetujui.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ya, Ini Saya')),
-        ],
-      ),
+    final confirm = await showAppConfirmDialog(
+      context,
+      title: 'Konfirmasi Klaim',
+      message:
+          'Apakah "${orang['name']}" adalah diri Anda sendiri di pohon keluarga?\n\nPengurus akan meninjau klaim ini sebelum disetujui.',
+      icon: Icons.verified_user_outlined,
+      confirmLabel: 'Ya, Ini Saya',
     );
-    if (confirm != true) return;
+    if (!confirm) return;
 
     setState(() => _submitting = true);
     try {

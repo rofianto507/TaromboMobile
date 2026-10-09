@@ -140,7 +140,10 @@ class _ArsipListScreenState extends ConsumerState<ArsipListScreen> {
                               childAspectRatio: 0.78,
                             ),
                             itemCount: _results.length,
-                            itemBuilder: (_, i) => _ArsipCard(item: _results[i]),
+                            itemBuilder: (_, i) => _ArsipCard(
+                              item: _results[i],
+                              onDihapus: () => _search(_ctrl.text),
+                            ),
                           ),
           ),
         ],
@@ -151,7 +154,8 @@ class _ArsipListScreenState extends ConsumerState<ArsipListScreen> {
 
 class _ArsipCard extends StatelessWidget {
   final ArsipItem item;
-  const _ArsipCard({required this.item});
+  final VoidCallback onDihapus;
+  const _ArsipCard({required this.item, required this.onDihapus});
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +164,10 @@ class _ArsipCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => showArsipDetailSheet(context, item.id),
+        onTap: () async {
+          final dihapus = await showArsipDetailSheet(context, item.id);
+          if (dihapus) onDihapus();
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

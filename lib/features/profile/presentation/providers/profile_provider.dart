@@ -141,6 +141,7 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
           ],
           kwargs: {
             'fields': [
+              'id',
               'jenjang',
               'institusi',
               'jurusan',
@@ -163,6 +164,7 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
           ],
           kwargs: {
             'fields': [
+              'id',
               'jabatan',
               'instansi',
               'bidang_id',
@@ -243,15 +245,12 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
   final pendidikan = pendidikanRows
       .map(
         (r) => PendidikanRingkas(
+          id: r['id'] as int,
           jenjang: asOdooString(r['jenjang']),
           institusi: asOdooString(r['institusi']) ?? '-',
           jurusan: asOdooString(r['jurusan']),
-          tahunMasuk: r['tahun_masuk'] == false
-              ? null
-              : r['tahun_masuk'] as int?,
-          tahunLulus: r['tahun_lulus'] == false
-              ? null
-              : r['tahun_lulus'] as int?,
+          tahunMasuk: _tahun(r['tahun_masuk']),
+          tahunLulus: _tahun(r['tahun_lulus']),
           lulus: r['lulus'] == true,
         ),
       )
@@ -260,15 +259,12 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
   final pekerjaan = pekerjaanRows
       .map(
         (r) => PekerjaanRingkas(
+          id: r['id'] as int,
           jabatan: asOdooString(r['jabatan']) ?? '-',
           instansi: asOdooString(r['instansi']),
           bidang: _m2oName(r['bidang_id']),
-          tahunMulai: r['tahun_mulai'] == false
-              ? null
-              : r['tahun_mulai'] as int?,
-          tahunSelesai: r['tahun_selesai'] == false
-              ? null
-              : r['tahun_selesai'] as int?,
+          tahunMulai: _tahun(r['tahun_mulai']),
+          tahunSelesai: _tahun(r['tahun_selesai']),
           sekarang: r['sekarang'] == true,
         ),
       )
@@ -323,6 +319,54 @@ OrangRingkas _toRingkas(Map<String, dynamic> r, {int level = 0}) =>
       masihHidup: r['masih_hidup'] == true,
       jumlahAnak: (r['anak_ids'] as List? ?? const []).length,
     );
+
+/// Integer Odoo yang kosong dikirim 0 (bukan false) — anggap bukan tahun.
+int? _tahun(dynamic v) => (v is int && v > 0) ? v : null;
+
+/// Tambah / hapus riwayat pendidikan & pekerjaan milik sendiri. Tanpa
+/// persetujuan pengurus: dibatasi ir.rule backend (orang_id.user_id = akun ini).
+class RiwayatRepository {
+  final Ref ref;
+  RiwayatRepository(this.ref);
+
+  Future<void> tambahPendidikan(int orangId, Map<String, dynamic> vals) =>
+      _create('tarombo.pendidikan', orangId, vals);
+
+  Future<void> tambahPekerjaan(int orangId, Map<String, dynamic> vals) =>
+      _create('tarombo.pekerjaan', orangId, vals);
+
+  Future<void> hapusPendidikan(int orangId, int id) =>
+      _delete('tarombo.pendidikan', orangId, id);
+
+  Future<void> hapusPekerjaan(int orangId, int id) =>
+      _delete('tarombo.pekerjaan', orangId, id);
+
+  Future<void> _create(String model, int orangId, Map<String, dynamic> vals) async {
+    await ref.read(apiClientProvider).callKw(
+      model: model,
+      method: 'create',
+      args: [
+        {...vals, 'orang_id': orangId},
+      ],
+    );
+    ref.invalidate(profileDetailProvider(orangId));
+  }
+
+  Future<void> _delete(String model, int orangId, int id) async {
+    await ref.read(apiClientProvider).callKw(
+      model: model,
+      method: 'unlink',
+      args: [
+        [id],
+      ],
+    );
+    ref.invalidate(profileDetailProvider(orangId));
+  }
+}
+
+final riwayatRepositoryProvider = Provider<RiwayatRepository>(
+  (ref) => RiwayatRepository(ref),
+);
 
 String? _m2oName(dynamic v) =>
     (v is List && v.length > 1) ? v[1] as String : null;

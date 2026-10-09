@@ -5,13 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/utils/orang_labels.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/arsip_thumbnail.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
 import '../../../arsip/presentation/screens/arsip_detail_sheet.dart';
+import '../../../arsip/presentation/widgets/arsip_form_sheet.dart';
 import '../../../klaim/presentation/providers/klaim_provider.dart';
 import '../../../tarombo_tree/presentation/providers/pohon_provider.dart';
 import '../../domain/entities/orang_ringkas.dart';
 import '../providers/profile_provider.dart';
+import '../widgets/riwayat_form_sheet.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold = Color(0xFFC8A24A);
@@ -103,8 +106,8 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen>
               children: [
                 _DomisiliTab(d: d),
                 _KeluargaTab(d: d),
-                _RiwayatTab(d: d),
-                _ArsipTab(d: d),
+                _RiwayatTab(d: d, editable: isMilikSendiri),
+                _ArsipTab(d: d, editable: isMilikSendiri),
               ],
             ),
           ),
@@ -224,10 +227,12 @@ class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final Widget? trailing;
   const _SectionHeader({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.trailing,
   });
 
   @override
@@ -252,6 +257,7 @@ class _SectionHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        ?trailing,
       ],
     );
   }
@@ -496,12 +502,56 @@ class _KeluargaTab extends StatelessWidget {
 
 // ── Tab: Riwayat ────────────────────────────────────────────────────────
 
-class _RiwayatTab extends StatelessWidget {
+class _RiwayatTab extends ConsumerWidget {
   final ProfileDetail d;
-  const _RiwayatTab({required this.d});
+  // true hanya di profil sendiri: boleh tambah/hapus riwayat tanpa verifikasi pengurus.
+  final bool editable;
+  const _RiwayatTab({required this.d, required this.editable});
+
+  Future<void> _hapus(
+    BuildContext context,
+    WidgetRef ref, {
+    required String nama,
+    required Future<void> Function() aksi,
+  }) async {
+    final yakin = await showAppConfirmDialog(
+      context,
+      title: 'Hapus riwayat?',
+      message: '"$nama" akan dihapus dari profil Anda.',
+      icon: Icons.delete_outline_rounded,
+      confirmLabel: 'Hapus',
+      destructive: true,
+    );
+    if (!yakin) return;
+    try {
+      await aksi();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
+      }
+    }
+  }
+
+  Widget _tombolTambah(VoidCallback onTap) => TextButton.icon(
+    onPressed: onTap,
+    icon: const Icon(Icons.add, size: 18),
+    label: const Text('Tambah'),
+    style: TextButton.styleFrom(foregroundColor: _kGreen1),
+  );
+
+  Widget? _tombolHapus(VoidCallback onTap) => editable
+      ? IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          tooltip: 'Hapus',
+          onPressed: onTap,
+        )
+      : null;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.read(riwayatRepositoryProvider);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -509,6 +559,9 @@ class _RiwayatTab extends StatelessWidget {
           icon: Icons.school_rounded,
           title: 'Pendidikan',
           subtitle: '',
+          trailing: editable
+              ? _tombolTambah(() => showPendidikanFormSheet(context, d.id))
+              : null,
         ),
         if (d.pendidikan.isEmpty)
           const Padding(
@@ -535,6 +588,14 @@ class _RiwayatTab extends StatelessWidget {
                     '${p.tahunMasuk ?? '?'}–${p.lulus ? (p.tahunLulus ?? '?') : 'sekarang'}',
                 ].join(' • '),
               ),
+              trailing: _tombolHapus(
+                () => _hapus(
+                  context,
+                  ref,
+                  nama: p.institusi,
+                  aksi: () => repo.hapusPendidikan(d.id, p.id),
+                ),
+              ),
             ),
           ),
         const Divider(height: 32),
@@ -542,6 +603,9 @@ class _RiwayatTab extends StatelessWidget {
           icon: Icons.work_rounded,
           title: 'Pekerjaan',
           subtitle: '',
+          trailing: editable
+              ? _tombolTambah(() => showPekerjaanFormSheet(context, d.id))
+              : null,
         ),
         if (d.pekerjaan.isEmpty)
           const Padding(
@@ -568,6 +632,14 @@ class _RiwayatTab extends StatelessWidget {
                     '${p.tahunMulai}–${p.sekarang ? 'sekarang' : (p.tahunSelesai ?? '?')}',
                 ].join(' • '),
               ),
+              trailing: _tombolHapus(
+                () => _hapus(
+                  context,
+                  ref,
+                  nama: p.jabatan,
+                  aksi: () => repo.hapusPekerjaan(d.id, p.id),
+                ),
+              ),
             ),
           ),
       ],
@@ -577,32 +649,59 @@ class _RiwayatTab extends StatelessWidget {
 
 // ── Tab: Arsip ──────────────────────────────────────────────────────────
 
-class _ArsipTab extends StatelessWidget {
+class _ArsipTab extends ConsumerWidget {
   final ProfileDetail d;
-  const _ArsipTab({required this.d});
+  // true hanya di profil sendiri: boleh menambah arsip tanpa verifikasi pengurus.
+  final bool editable;
+  const _ArsipTab({required this.d, required this.editable});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tombolTambah = editable
+        ? Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => showArsipFormSheet(context, d.id),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Tambah Arsip'),
+              style: TextButton.styleFrom(foregroundColor: _kGreen1),
+            ),
+          )
+        : null;
+
     if (d.arsip.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada arsip terkait.',
-          style: TextStyle(color: Colors.grey),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Belum ada arsip terkait.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            ?tombolTambah,
+          ],
         ),
       );
     }
     return ListView.separated(
       padding: const EdgeInsets.all(20),
-      itemCount: d.arsip.length,
+      itemCount: d.arsip.length + (tombolTambah != null ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
+        if (tombolTambah != null) {
+          if (i == 0) return tombolTambah;
+          i -= 1;
+        }
         final item = d.arsip[i];
         return Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => showArsipDetailSheet(context, item.id),
+            onTap: () async {
+              final dihapus = await showArsipDetailSheet(context, item.id);
+              if (dihapus) ref.invalidate(profileDetailProvider(d.id));
+            },
             child: Row(
               children: [
                 SizedBox(

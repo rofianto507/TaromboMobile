@@ -44,6 +44,7 @@ class PernikahanRingkas {
 }
 
 class PendidikanRingkas {
+  final int id;
   final String? jenjang;
   final String institusi;
   final String? jurusan;
@@ -52,6 +53,7 @@ class PendidikanRingkas {
   final bool lulus;
 
   const PendidikanRingkas({
+    required this.id,
     this.jenjang,
     required this.institusi,
     this.jurusan,
@@ -62,6 +64,7 @@ class PendidikanRingkas {
 }
 
 class PekerjaanRingkas {
+  final int id;
   final String jabatan;
   final String? instansi;
   final String? bidang;
@@ -70,6 +73,7 @@ class PekerjaanRingkas {
   final bool sekarang;
 
   const PekerjaanRingkas({
+    required this.id,
     required this.jabatan,
     this.instansi,
     this.bidang,

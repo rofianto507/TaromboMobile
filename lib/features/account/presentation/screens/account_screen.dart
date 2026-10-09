@@ -8,6 +8,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../klaim/domain/entities/klaim_info.dart';
 import '../../../klaim/presentation/providers/klaim_provider.dart';
 import '../../../../shared/utils/confirm_logout.dart';
+import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/notifikasi_button.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
 
@@ -247,46 +248,28 @@ class AccountScreen extends ConsumerWidget {
 
 Future<void> _confirmHapusAkun(BuildContext context, WidgetRef ref) async {
   final alasanCtrl = TextEditingController();
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Hapus Akun?'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Permintaan akan dicatat dan diproses admin dalam maksimal 30 hari kerja. '
-            'Akun dan tautan identitas Anda akan dihapus permanen; data silsilah '
-            'keluarga itu sendiri tetap disimpan sebagai arsip bersama.',
-            style: TextStyle(fontSize: 13),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: alasanCtrl,
-            maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'Alasan (opsional)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ],
+  final confirmed = await showAppConfirmDialog(
+    context,
+    title: 'Hapus Akun?',
+    message:
+        'Permintaan akan dicatat dan diproses admin dalam maksimal 30 hari kerja. '
+        'Akun dan tautan identitas Anda akan dihapus permanen; data silsilah '
+        'keluarga itu sendiri tetap disimpan sebagai arsip bersama.',
+    icon: Icons.delete_forever_outlined,
+    confirmLabel: 'Ajukan',
+    destructive: true,
+    content: TextField(
+      controller: alasanCtrl,
+      maxLines: 2,
+      decoration: InputDecoration(
+        hintText: 'Alasan (opsional)',
+        isDense: true,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Ajukan'),
-        ),
-      ],
     ),
   );
 
-  if (confirmed != true) {
+  if (!confirmed) {
     alasanCtrl.dispose();
     return;
   }
