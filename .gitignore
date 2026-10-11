@@ -52,3 +52,7 @@ env.web.json
 # Firebase configuration (sensitive)
 google-services.json
 GoogleService-Info.plist
+
+# Materi rilis Google Play (panduan, listing, grafis, tangkapan layar, manual).
+# Berisi tangkapan layar dengan data nyata anggota, jadi tidak boleh ikut ke GitHub.
+/playstore/
