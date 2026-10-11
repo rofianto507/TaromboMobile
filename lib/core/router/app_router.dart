@@ -17,6 +17,7 @@ import '../../features/notifikasi/presentation/screens/notifikasi_screen.dart';
 import '../../features/profile/presentation/screens/profile_search_screen.dart';
 import '../../features/profile/presentation/screens/profile_detail_screen.dart';
 import '../../features/partuturan/presentation/screens/partuturan_screen.dart';
+import '../../features/profil_saya/presentation/screens/lengkapi_profil_screen.dart';
 import '../../features/usulan/presentation/screens/usulan_list_screen.dart';
 import '../../features/usulan/presentation/screens/usulan_form_screen.dart';
 import '../../features/direktori_keahlian/presentation/screens/direktori_keahlian_screen.dart';
@@ -213,7 +214,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, state) => ProfileDetailScreen(
           orangId: int.parse(state.pathParameters['id']!),
+          tabAwal: state.uri.queryParameters['tab'],
         ),
+      ),
+      GoRoute(
+        path: '/profil-saya',
+        name: 'profilSaya',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const LengkapiProfilScreen(),
       ),
       GoRoute(
         path: '/partuturan',

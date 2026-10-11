@@ -21,7 +21,11 @@ const _kGold = Color(0xFFC8A24A);
 
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   final int orangId;
-  const ProfileDetailScreen({super.key, required this.orangId});
+
+  /// Tab yang dibuka pertama kali: 'domisili' (bawaan), 'keluarga', 'riwayat',
+  /// atau 'arsip'. Dipakai tautan dari layar lain, mis. Lengkapi Profil.
+  final String? tabAwal;
+  const ProfileDetailScreen({super.key, required this.orangId, this.tabAwal});
 
   @override
   ConsumerState<ProfileDetailScreen> createState() =>
@@ -42,7 +46,13 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    const urutan = ['domisili', 'keluarga', 'riwayat', 'arsip'];
+    final awal = urutan.indexOf(widget.tabAwal ?? '');
+    _tabController = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: awal < 0 ? 0 : awal,
+    );
   }
 
   @override
@@ -68,11 +78,8 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen>
           if (isMilikSendiri)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Perbarui Data Saya',
-              onPressed: () => context.push(
-                '/usulan/baru',
-                extra: {'targetId': d.id, 'targetName': d.name},
-              ),
+              tooltip: 'Lengkapi Profil',
+              onPressed: () => context.push('/profil-saya'),
             ),
         ],
       ),

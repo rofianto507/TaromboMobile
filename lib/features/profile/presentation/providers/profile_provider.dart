@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/utils/odoo_json.dart';
 import '../../../arsip/domain/entities/arsip_item.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../profil_saya/presentation/providers/profil_saya_provider.dart';
 import '../../domain/entities/orang_ringkas.dart';
 
 final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, int>((
@@ -350,6 +351,8 @@ class RiwayatRepository {
       ],
     );
     ref.invalidate(profileDetailProvider(orangId));
+    // Riwayat ikut dihitung di kartu kelengkapan profil.
+    ref.invalidate(profilSayaProvider);
   }
 
   Future<void> _delete(String model, int orangId, int id) async {
@@ -361,6 +364,8 @@ class RiwayatRepository {
       ],
     );
     ref.invalidate(profileDetailProvider(orangId));
+    // Riwayat ikut dihitung di kartu kelengkapan profil.
+    ref.invalidate(profilSayaProvider);
   }
 }
 

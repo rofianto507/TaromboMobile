@@ -83,10 +83,18 @@ class PushService {
     final settings = await FirebaseMessaging.instance.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) await _kirimTokenKeBackend(token);
-
+    // Pasang pendengar DULU: bila getToken() di bawah gagal, token yang datang
+    // belakangan (saat layanan Google pulih) tetap terdaftar.
     FirebaseMessaging.instance.onTokenRefresh.listen(_kirimTokenKeBackend);
+
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await _kirimTokenKeBackend(token);
+    } catch (_) {
+      // getToken() melempar SERVICE_NOT_AVAILABLE saat Google Play Services
+      // sedang tak terjangkau (jaringan/perangkat). Best-effort seperti
+      // _kirimTokenKeBackend: tidak boleh jadi exception tak tertangani.
+    }
   }
 
   Future<void> _kirimTokenKeBackend(String token) async {
