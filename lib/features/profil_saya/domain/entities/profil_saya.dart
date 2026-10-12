@@ -6,8 +6,9 @@ class WilayahRef {
   final String name;
   const WilayahRef(this.id, this.name);
 
-  static WilayahRef? fromM2o(dynamic v) =>
-      (v is List && v.length > 1) ? WilayahRef(v[0] as int, v[1] as String) : null;
+  static WilayahRef? fromM2o(dynamic v) => (v is List && v.length > 1)
+      ? WilayahRef(v[0] as int, v[1] as String)
+      : null;
 }
 
 class ButirKelengkapan {
@@ -36,17 +37,18 @@ class KelengkapanProfil {
     return null;
   }
 
-  factory KelengkapanProfil.fromJson(Map<String, dynamic> json) => KelengkapanProfil(
-    persen: (json['persen'] as num?)?.toInt() ?? 0,
-    butir: [
-      for (final b in (json['butir'] as List? ?? const []))
-        ButirKelengkapan(
-          key: (b as Map)['key'] as String,
-          label: b['label'] as String,
-          selesai: b['selesai'] == true,
-        ),
-    ],
-  );
+  factory KelengkapanProfil.fromJson(Map<String, dynamic> json) =>
+      KelengkapanProfil(
+        persen: (json['persen'] as num?)?.toInt() ?? 0,
+        butir: [
+          for (final b in (json['butir'] as List? ?? const []))
+            ButirKelengkapan(
+              key: (b as Map)['key'] as String,
+              label: b['label'] as String,
+              selesai: b['selesai'] == true,
+            ),
+        ],
+      );
 }
 
 /// Data profil milik akun yang login (get_profil_saya di backend), termasuk
@@ -63,6 +65,11 @@ class ProfilSaya {
   final WilayahRef? desa;
   final String? alamatJalan;
   final String? alamatCatatan;
+  // Titik rumah di peta (null bila belum diisi). Tampil ke anggota lain HANYA
+  // bila berbagiLokasi aktif.
+  final double? latitude;
+  final double? longitude;
+  final bool berbagiLokasi;
   final KelengkapanProfil kelengkapan;
 
   const ProfilSaya({
@@ -78,6 +85,9 @@ class ProfilSaya {
     this.desa,
     this.alamatJalan,
     this.alamatCatatan,
+    this.latitude,
+    this.longitude,
+    this.berbagiLokasi = false,
   });
 
   factory ProfilSaya.fromJson(Map<String, dynamic> json) => ProfilSaya(
@@ -92,6 +102,13 @@ class ProfilSaya {
     desa: WilayahRef.fromM2o(json['desa_id']),
     alamatJalan: asOdooString(json['alamat_jalan']),
     alamatCatatan: asOdooString(json['alamat_catatan']),
+    latitude: json['latitude'] is num
+        ? (json['latitude'] as num).toDouble()
+        : null,
+    longitude: json['longitude'] is num
+        ? (json['longitude'] as num).toDouble()
+        : null,
+    berbagiLokasi: json['berbagi_lokasi'] == true,
     kelengkapan: KelengkapanProfil.fromJson(
       (json['kelengkapan'] as Map).cast<String, dynamic>(),
     ),

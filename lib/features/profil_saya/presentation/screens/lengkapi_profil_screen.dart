@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/orang_labels.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
+import '../../../../shared/widgets/lokasi_picker_screen.dart';
 import '../../../../shared/widgets/wilayah_picker_sheet.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/riwayat_form_sheet.dart';
@@ -40,6 +42,7 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
   WilayahRef? _kabupaten;
   WilayahRef? _kecamatan;
   WilayahRef? _desa;
+  LatLng? _titik;
 
   @override
   void dispose() {
@@ -58,6 +61,9 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
     _kecamatan = p.kecamatan;
     _desa = p.desa;
     _alamat.text = p.alamatJalan ?? '';
+    _titik = (p.latitude != null && p.longitude != null)
+        ? LatLng(p.latitude!, p.longitude!)
+        : null;
   }
 
   Future<void> _pilihFoto() async {
@@ -131,6 +137,14 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
     });
   }
 
+  Future<void> _pilihTitik() async {
+    final hasil = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(builder: (_) => LokasiPickerScreen(titikAwal: _titik)),
+    );
+    if (hasil != null) setState(() => _titik = hasil);
+  }
+
   Future<void> _simpan(ProfilSaya awal) async {
     final vals = <String, dynamic>{};
     if (_fotoBaru != null) vals['foto'] = base64Encode(_fotoBaru!);
@@ -154,6 +168,16 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
     }
     final alamat = _alamat.text.trim();
     if (alamat != (awal.alamatJalan ?? '')) vals['alamat_jalan'] = alamat;
+
+    // Titik rumah: dikirim berpasangan; menghapusnya mengirim keduanya false.
+    final titikAwal = (awal.latitude != null && awal.longitude != null)
+        ? LatLng(awal.latitude!, awal.longitude!)
+        : null;
+    if (_titik?.latitude != titikAwal?.latitude ||
+        _titik?.longitude != titikAwal?.longitude) {
+      vals['latitude'] = _titik?.latitude ?? false;
+      vals['longitude'] = _titik?.longitude ?? false;
+    }
 
     if (vals.isEmpty) {
       context.pop();
@@ -392,6 +416,22 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
         ),
         const _Catatan(
           'Wilayah dan alamat terlihat oleh sesama anggota terverifikasi.',
+        ),
+        const SizedBox(height: 16),
+        _Baris(
+          ikon: Icons.pin_drop_outlined,
+          label: 'Titik lokasi rumah',
+          nilai: _titik == null
+              ? null
+              : '${_titik!.latitude.toStringAsFixed(5)}, ${_titik!.longitude.toStringAsFixed(5)}',
+          kosong: 'Pilih di peta',
+          onTap: _pilihTitik,
+          onHapus: _titik == null ? null : () => setState(() => _titik = null),
+        ),
+        _Catatan(
+          p.berbagiLokasi
+              ? 'Titik ini sedang ditampilkan ke anggota lain di peta Kerabat Terdekat. Untuk mematikannya, ubah di layar Kerabat Terdekat.'
+              : 'Titik ini hanya terlihat oleh Anda dan pengurus. Baru tampil di peta Kerabat Terdekat bila Anda menyalakan berbagi lokasi.',
         ),
         const SizedBox(height: 24),
 

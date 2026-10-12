@@ -15,7 +15,11 @@ final profilSayaProvider = FutureProvider.autoDispose<ProfilSaya?>((ref) async {
   if (klaim.orang == null) return null;
   final json = await ref
       .read(apiClientProvider)
-      .callKw(model: 'tarombo.orang', method: 'get_profil_saya', args: const []);
+      .callKw(
+        model: 'tarombo.orang',
+        method: 'get_profil_saya',
+        args: const [],
+      );
   if (json is! Map) return null;
   return ProfilSaya.fromJson(json.cast<String, dynamic>());
 });
@@ -28,11 +32,13 @@ class ProfilSayaRepository {
   ProfilSayaRepository(this.ref);
 
   Future<void> simpan(int orangId, Map<String, dynamic> vals) async {
-    await ref.read(apiClientProvider).callKw(
-      model: 'tarombo.orang',
-      method: 'update_profil_saya',
-      args: [vals],
-    );
+    await ref
+        .read(apiClientProvider)
+        .callKw(
+          model: 'tarombo.orang',
+          method: 'update_profil_saya',
+          args: [vals],
+        );
     if (vals.containsKey('foto')) {
       // Foto diambil dari URL yang sama (/web/image/...), jadi tembolok gambar
       // harus dibuang supaya avatar memuat foto yang baru.
@@ -42,6 +48,14 @@ class ProfilSayaRepository {
     }
     ref.invalidate(profilSayaProvider);
     ref.invalidate(profileDetailProvider(orangId));
+    // Tunggu profil selesai dimuat ulang SEBELUM pemanggil menutup layar, supaya
+    // halaman Profil di bawahnya langsung menampilkan data baru (peta, alamat,
+    // foto), bukan data lama sampai pemuatan ulang selesai di belakang layar.
+    try {
+      await ref.read(profileDetailProvider(orangId).future);
+    } catch (_) {
+      // Gagal memuat ulang tidak boleh menggagalkan simpan yang sudah berhasil.
+    }
   }
 }
 

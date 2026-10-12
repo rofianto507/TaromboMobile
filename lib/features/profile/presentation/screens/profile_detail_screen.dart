@@ -338,6 +338,11 @@ class _DomisiliTab extends StatelessWidget {
               height: 200,
               child: IgnorePointer(
                 child: FlutterMap(
+                  // initialCenter hanya dibaca saat peta pertama dibuat. Kunci
+                  // berdasarkan koordinat memaksa peta dibangun ulang bila titik
+                  // berubah (mis. sesudah Lengkapi Profil), kalau tidak kamera
+                  // tetap di posisi lama sementara penandanya sudah pindah.
+                  key: ValueKey('${info.lat}_${info.lng}'),
                   options: MapOptions(
                     initialCenter: LatLng(info.lat!, info.lng!),
                     initialZoom: 13,

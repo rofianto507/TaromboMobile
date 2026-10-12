@@ -27,7 +27,9 @@ class KelengkapanProfilCard extends StatelessWidget {
       shadowColor: Colors.black26,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: rinci ? Colors.grey.shade300 : Colors.transparent),
+        side: BorderSide(
+          color: rinci ? Colors.grey.shade300 : Colors.transparent,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -41,7 +43,9 @@ class KelengkapanProfilCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      k.lengkap ? 'Profil Anda sudah lengkap' : 'Profil Anda ${k.persen}% lengkap',
+                      k.lengkap
+                          ? 'Profil Anda sudah lengkap'
+                          : 'Profil Anda ${k.persen}% lengkap',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -49,7 +53,8 @@ class KelengkapanProfilCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onTap != null) const Icon(Icons.chevron_right_rounded, color: _kGreen1),
+                  if (onTap != null)
+                    const Icon(Icons.chevron_right_rounded, color: _kGreen1),
                 ],
               ),
               const SizedBox(height: 10),
@@ -91,7 +96,9 @@ class KelengkapanProfilCard extends StatelessWidget {
                             b.label,
                             style: TextStyle(
                               fontSize: 12,
-                              color: b.selesai ? Colors.black87 : Colors.grey.shade600,
+                              color: b.selesai
+                                  ? Colors.black87
+                                  : Colors.grey.shade600,
                             ),
                           ),
                         ],
