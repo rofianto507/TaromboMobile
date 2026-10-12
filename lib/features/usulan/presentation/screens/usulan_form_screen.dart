@@ -58,6 +58,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
 
   // Alamat & titik lokasi (opsional, berlaku untuk mode Tambah maupun Edit)
   final _alamatCtrl = TextEditingController();
+  final _telpCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   LatLng? _titikLokasi;
 
   // Bersama
@@ -265,6 +267,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           catatan: _catatanCtrl.text.trim(),
           fotoBase64: _fotoBase64,
           usulAlamatJalan: _alamatCtrl.text.trim(),
+          usulNoTelp: _telpCtrl.text.trim(),
+          usulEmailKontak: _emailCtrl.text.trim(),
           usulLatitude: _titikLokasi?.latitude,
           usulLongitude: _titikLokasi?.longitude,
           usulTanggalLahir: _tanggalLahir == null
@@ -288,6 +292,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           catatan: _catatanCtrl.text.trim(),
           fotoBase64: _fotoBase64,
           usulAlamatJalan: _alamatCtrl.text.trim(),
+          usulNoTelp: _telpCtrl.text.trim(),
+          usulEmailKontak: _emailCtrl.text.trim(),
           usulLatitude: _titikLokasi?.latitude,
           usulLongitude: _titikLokasi?.longitude,
           usulTanggalLahir: _tanggalLahir == null
@@ -318,6 +324,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     _sumberCtrl.dispose();
     _catatanCtrl.dispose();
     _alamatCtrl.dispose();
+    _telpCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
   }
 
@@ -391,6 +399,33 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Wajib diisi'
                           : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _telpCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Nomor Telepon (opsional)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email (opsional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        final t = (v ?? '').trim();
+                        if (t.isEmpty) return null;
+                        return RegExp(
+                              r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$',
+                            ).hasMatch(t)
+                            ? null
+                            : 'Format email tidak valid';
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

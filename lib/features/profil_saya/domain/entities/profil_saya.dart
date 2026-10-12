@@ -65,6 +65,9 @@ class ProfilSaya {
   final WilayahRef? desa;
   final String? alamatJalan;
   final String? alamatCatatan;
+  // Kontak pribadi — hanya terlihat oleh pemilik dan pengurus.
+  final String? noTelp;
+  final String? emailKontak;
   // Titik rumah di peta (null bila belum diisi). Tampil ke anggota lain HANYA
   // bila berbagiLokasi aktif.
   final double? latitude;
@@ -85,6 +88,8 @@ class ProfilSaya {
     this.desa,
     this.alamatJalan,
     this.alamatCatatan,
+    this.noTelp,
+    this.emailKontak,
     this.latitude,
     this.longitude,
     this.berbagiLokasi = false,
@@ -102,6 +107,8 @@ class ProfilSaya {
     desa: WilayahRef.fromM2o(json['desa_id']),
     alamatJalan: asOdooString(json['alamat_jalan']),
     alamatCatatan: asOdooString(json['alamat_catatan']),
+    noTelp: asOdooString(json['no_telp']),
+    emailKontak: asOdooString(json['email_kontak']),
     latitude: json['latitude'] is num
         ? (json['latitude'] as num).toDouble()
         : null,

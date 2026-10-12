@@ -122,6 +122,11 @@ class ProfileDetail {
   final List<OrangRingkas> anak;
 
   final DomisiliInfo domisili;
+  // Kontak: hanya terisi bila AKUN YANG MELIHAT sudah terverifikasi (tertaut ke
+  // data anggota). Akun belum terverifikasi menerima null dari server.
+  final bool kontakTerverifikasi;
+  final String? noTelp;
+  final String? emailKontak;
   // Untuk orang yang menikah keluar dari garis marga (biasanya perempuan) —
   // pasangannya bukan record tarombo.orang, cuma nama+marga.
   final String? suamiNama;
@@ -144,6 +149,9 @@ class ProfileDetail {
     this.leluhur = const [],
     this.anak = const [],
     this.domisili = const DomisiliInfo(),
+    this.kontakTerverifikasi = false,
+    this.noTelp,
+    this.emailKontak,
     this.suamiNama,
     this.suamiMarga,
     this.pernikahan = const [],

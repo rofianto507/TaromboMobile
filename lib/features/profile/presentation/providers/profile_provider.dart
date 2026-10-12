@@ -206,6 +206,16 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
           args: [orangId],
         )
         .then((r) => r as Map<String, dynamic>),
+    // Kontak (telepon & email) — server mengembalikan kosong untuk akun yang
+    // belum terverifikasi, jadi tidak perlu cek status di sini.
+    api
+        .callKw(
+          model: 'tarombo.orang',
+          method: 'get_kontak_orang',
+          args: [orangId],
+        )
+        .then((r) => r as Map<String, dynamic>)
+        .catchError((_) => <String, dynamic>{}),
   ]);
 
   final ancestorRows = results[0] as List<Map<String, dynamic>>;
@@ -215,6 +225,7 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
   final pekerjaanRows = results[4] as List<Map<String, dynamic>>;
   final arsipRows = results[5] as List<Map<String, dynamic>>;
   final domisiliMap = results[6] as Map<String, dynamic>;
+  final kontakMap = results[7] as Map<String, dynamic>;
 
   final byId = {for (final r in ancestorRows) r['id'] as int: r};
   final leluhur = [
@@ -300,6 +311,9 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
     leluhur: leluhur,
     anak: anak,
     domisili: domisili,
+    kontakTerverifikasi: kontakMap['terverifikasi'] == true,
+    noTelp: asOdooString(kontakMap['no_telp']),
+    emailKontak: asOdooString(kontakMap['email_kontak']),
     suamiNama: asOdooString(row['suami_nama']),
     suamiMarga: _m2oName(row['suami_marga_id']),
     pernikahan: pernikahan,
@@ -342,27 +356,35 @@ class RiwayatRepository {
   Future<void> hapusPekerjaan(int orangId, int id) =>
       _delete('tarombo.pekerjaan', orangId, id);
 
-  Future<void> _create(String model, int orangId, Map<String, dynamic> vals) async {
-    await ref.read(apiClientProvider).callKw(
-      model: model,
-      method: 'create',
-      args: [
-        {...vals, 'orang_id': orangId},
-      ],
-    );
+  Future<void> _create(
+    String model,
+    int orangId,
+    Map<String, dynamic> vals,
+  ) async {
+    await ref
+        .read(apiClientProvider)
+        .callKw(
+          model: model,
+          method: 'create',
+          args: [
+            {...vals, 'orang_id': orangId},
+          ],
+        );
     ref.invalidate(profileDetailProvider(orangId));
     // Riwayat ikut dihitung di kartu kelengkapan profil.
     ref.invalidate(profilSayaProvider);
   }
 
   Future<void> _delete(String model, int orangId, int id) async {
-    await ref.read(apiClientProvider).callKw(
-      model: model,
-      method: 'unlink',
-      args: [
-        [id],
-      ],
-    );
+    await ref
+        .read(apiClientProvider)
+        .callKw(
+          model: model,
+          method: 'unlink',
+          args: [
+            [id],
+          ],
+        );
     ref.invalidate(profileDetailProvider(orangId));
     // Riwayat ikut dihitung di kartu kelengkapan profil.
     ref.invalidate(profilSayaProvider);

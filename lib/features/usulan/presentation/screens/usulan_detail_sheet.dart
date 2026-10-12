@@ -253,6 +253,18 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             label: 'Alamat',
             value: d.usulAlamatJalan!,
           ),
+        if (d.usulNoTelp != null)
+          _InfoRow(
+            icon: Icons.phone_outlined,
+            label: 'Telepon',
+            value: d.usulNoTelp!,
+          ),
+        if (d.usulEmailKontak != null)
+          _InfoRow(
+            icon: Icons.email_outlined,
+            label: 'Email',
+            value: d.usulEmailKontak!,
+          ),
 
         if (d.usulLatitude != null && d.usulLongitude != null) ...[
           const SizedBox(height: 10),

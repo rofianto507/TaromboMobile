@@ -21,6 +21,8 @@ class UsulanDetail {
   final String?
   usulWilayah; // gabungan provinsi/kabupaten/kecamatan/desa yang terisi
   final String? usulAlamatJalan;
+  final String? usulNoTelp;
+  final String? usulEmailKontak;
   final double? usulLatitude;
   final double? usulLongitude;
   final String? usulSuamiNama;
@@ -50,6 +52,8 @@ class UsulanDetail {
     this.usulTanggalWafat,
     this.usulWilayah,
     this.usulAlamatJalan,
+    this.usulNoTelp,
+    this.usulEmailKontak,
     this.usulLatitude,
     this.usulLongitude,
     this.usulSuamiNama,

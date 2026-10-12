@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/utils/orang_labels.dart';
@@ -23,7 +24,7 @@ class ProfileDetailScreen extends ConsumerStatefulWidget {
   final int orangId;
 
   /// Tab yang dibuka pertama kali: 'domisili' (bawaan), 'keluarga', 'riwayat',
-  /// atau 'arsip'. Dipakai tautan dari layar lain, mis. Lengkapi Profil.
+  /// 'arsip', atau 'kontak' (hanya ada untuk akun terverifikasi). Dipakai tautan dari layar lain, mis. Lengkapi Profil.
   final String? tabAwal;
   const ProfileDetailScreen({super.key, required this.orangId, this.tabAwal});
 
@@ -32,35 +33,7 @@ class ProfileDetailScreen extends ConsumerStatefulWidget {
       _ProfileDetailScreenState();
 }
 
-class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  static const _tabs = [
-    Tab(text: 'Domisili'),
-    Tab(text: 'Keluarga'),
-    Tab(text: 'Riwayat'),
-    Tab(text: 'Arsip'),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    const urutan = ['domisili', 'keluarga', 'riwayat', 'arsip'];
-    final awal = urutan.indexOf(widget.tabAwal ?? '');
-    _tabController = TabController(
-      length: _tabs.length,
-      vsync: this,
-      initialIndex: awal < 0 ? 0 : awal,
-    );
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(profileDetailProvider(widget.orangId));
@@ -91,35 +64,182 @@ class _ProfileDetailScreenState extends ConsumerState<ProfileDetailScreen>
         data: (d) => RefreshIndicator(
           onRefresh: () async =>
               ref.invalidate(profileDetailProvider(widget.orangId)),
-          child: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverToBoxAdapter(child: _HeaderSection(d: d)),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _TabBarDelegate(
-                  TabBar(
-                    controller: _tabController,
-                    tabs: _tabs,
-                    labelColor: _kGreen1,
-                    unselectedLabelColor: Colors.grey.shade500,
-                    indicatorColor: _kGold,
-                    indicatorWeight: 3,
-                  ),
-                ),
-              ),
-            ],
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                _DomisiliTab(d: d),
-                _KeluargaTab(d: d),
-                _RiwayatTab(d: d, editable: isMilikSendiri),
-                _ArsipTab(d: d, editable: isMilikSendiri),
-              ],
-            ),
+          child: _ProfilTabs(
+            d: d,
+            isMilikSendiri: isMilikSendiri,
+            tabAwal: widget.tabAwal,
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Header + tab profil. Dipisah supaya jumlah tab bisa menyesuaikan data:
+/// tab Kontak hanya ada bila akun yang melihat sudah terverifikasi.
+class _ProfilTabs extends StatefulWidget {
+  final ProfileDetail d;
+  final bool isMilikSendiri;
+  final String? tabAwal;
+  const _ProfilTabs({
+    required this.d,
+    required this.isMilikSendiri,
+    this.tabAwal,
+  });
+
+  @override
+  State<_ProfilTabs> createState() => _ProfilTabsState();
+}
+
+class _ProfilTabsState extends State<_ProfilTabs>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late List<String> _kunci;
+
+  static const _judul = {
+    'domisili': 'Domisili',
+    'keluarga': 'Keluarga',
+    'riwayat': 'Riwayat',
+    'arsip': 'Arsip',
+    'kontak': 'Kontak',
+  };
+
+  List<String> _hitungKunci() => [
+    'domisili',
+    if (widget.d.kontakTerverifikasi) 'kontak',
+    'keluarga',
+    'riwayat',
+    'arsip',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _kunci = _hitungKunci();
+    final awal = _kunci.indexOf(widget.tabAwal ?? '');
+    _tabController = TabController(
+      length: _kunci.length,
+      vsync: this,
+      initialIndex: awal < 0 ? 0 : awal,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProfilTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final baru = _hitungKunci();
+    if (baru.length != _kunci.length) {
+      // Status verifikasi berubah setelah refresh: bangun ulang controller.
+      final index = _tabController.index.clamp(0, baru.length - 1);
+      _tabController.dispose();
+      _kunci = baru;
+      _tabController = TabController(
+        length: baru.length,
+        vsync: this,
+        initialIndex: index,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Widget _isi(String kunci) {
+    final d = widget.d;
+    switch (kunci) {
+      case 'keluarga':
+        return _KeluargaTab(d: d);
+      case 'riwayat':
+        return _RiwayatTab(d: d, editable: widget.isMilikSendiri);
+      case 'arsip':
+        return _ArsipTab(d: d, editable: widget.isMilikSendiri);
+      case 'kontak':
+        return _KontakTab(d: d);
+      default:
+        return _DomisiliTab(d: d);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        SliverToBoxAdapter(child: _HeaderSection(d: widget.d)),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _TabBarDelegate(
+            TabBar(
+              controller: _tabController,
+              tabs: [for (final k in _kunci) Tab(text: _judul[k])],
+              labelColor: _kGreen1,
+              unselectedLabelColor: Colors.grey.shade500,
+              indicatorColor: _kGold,
+              indicatorWeight: 3,
+            ),
+          ),
+        ),
+      ],
+      body: TabBarView(
+        key: ValueKey(_kunci.length),
+        controller: _tabController,
+        children: [for (final k in _kunci) _isi(k)],
+      ),
+    );
+  }
+}
+
+/// Tab Kontak — hanya dirender untuk akun terverifikasi (lihat _ProfilTabs).
+class _KontakTab extends StatelessWidget {
+  final ProfileDetail d;
+  const _KontakTab({required this.d});
+
+  @override
+  Widget build(BuildContext context) {
+    final ada = d.noTelp != null || d.emailKontak != null;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (!ada)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Text(
+              'Belum ada kontak yang dicantumkan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          )
+        else ...[
+          if (d.noTelp != null)
+            _KontakBaris(
+              ikon: Icons.phone_outlined,
+              teks: d.noTelp!,
+              aksi: 'Telepon',
+              uri: Uri(
+                scheme: 'tel',
+                path: d.noTelp!.replaceAll(RegExp(r'[^0-9+]'), ''),
+              ),
+            ),
+          if (d.emailKontak != null)
+            _KontakBaris(
+              ikon: Icons.email_outlined,
+              teks: d.emailKontak!,
+              aksi: 'Kirim email',
+              uri: Uri(scheme: 'mailto', path: d.emailKontak!),
+            ),
+        ],
+        const SizedBox(height: 16),
+        Text(
+          'Kontak hanya terlihat oleh anggota yang akunnya sudah terverifikasi.',
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -271,6 +391,53 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ── Tab: Domisili ───────────────────────────────────────────────────────
+
+/// Satu baris kontak yang bisa diketuk untuk menelepon / membuka email.
+class _KontakBaris extends StatelessWidget {
+  final IconData ikon;
+  final String teks;
+  final String aksi;
+  final Uri uri;
+  const _KontakBaris({
+    required this.ikon,
+    required this.teks,
+    required this.aksi,
+    required this.uri,
+  });
+
+  Future<void> _buka(BuildContext context) async {
+    final ok = await launchUrl(uri);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Tidak ada aplikasi untuk "${aksi.toLowerCase()}" di perangkat ini.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: const Color(0x1FC8A24A),
+        child: Icon(ikon, color: _kGreen1, size: 18),
+      ),
+      title: Text(teks, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(
+        aksi,
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: () => _buka(context),
+    );
+  }
+}
 
 class _DomisiliTab extends StatelessWidget {
   final ProfileDetail d;

@@ -94,6 +94,8 @@ final usulanDetailProvider = FutureProvider.autoDispose
                     'usul_kecamatan_id',
                     'usul_desa_id',
                     'usul_alamat_jalan',
+                    'usul_no_telp',
+                    'usul_email_kontak',
                     'usul_latitude',
                     'usul_longitude',
                     'usul_suami_nama',
@@ -166,6 +168,8 @@ final usulanDetailProvider = FutureProvider.autoDispose
         usulTanggalWafat: asOdooDate(r['usul_tanggal_wafat']),
         usulWilayah: wilayahBagian.isEmpty ? null : wilayahBagian.join(' - '),
         usulAlamatJalan: asOdooString(r['usul_alamat_jalan']),
+        usulNoTelp: asOdooString(r['usul_no_telp']),
+        usulEmailKontak: asOdooString(r['usul_email_kontak']),
         usulLatitude:
             (r['usul_latitude'] is num && (r['usul_latitude'] as num) != 0)
             ? (r['usul_latitude'] as num).toDouble()
@@ -205,6 +209,8 @@ class UsulanSubmitService {
     String? catatan,
     String? fotoBase64,
     String? usulAlamatJalan,
+    String? usulNoTelp,
+    String? usulEmailKontak,
     double? usulLatitude,
     double? usulLongitude,
     String? usulTanggalLahir,
@@ -225,6 +231,10 @@ class UsulanSubmitService {
           'usul_foto': ?fotoBase64,
           if (usulAlamatJalan != null && usulAlamatJalan.isNotEmpty)
             'usul_alamat_jalan': usulAlamatJalan,
+          if (usulNoTelp != null && usulNoTelp.isNotEmpty)
+            'usul_no_telp': usulNoTelp,
+          if (usulEmailKontak != null && usulEmailKontak.isNotEmpty)
+            'usul_email_kontak': usulEmailKontak,
           'usul_latitude': ?usulLatitude,
           'usul_longitude': ?usulLongitude,
           'usul_tanggal_lahir': ?usulTanggalLahir,
@@ -255,6 +265,8 @@ class UsulanSubmitService {
     String? catatan,
     String? fotoBase64,
     String? usulAlamatJalan,
+    String? usulNoTelp,
+    String? usulEmailKontak,
     double? usulLatitude,
     double? usulLongitude,
     String? usulTanggalLahir,
@@ -281,6 +293,10 @@ class UsulanSubmitService {
           'usul_foto': ?fotoBase64,
           if (usulAlamatJalan != null && usulAlamatJalan.isNotEmpty)
             'usul_alamat_jalan': usulAlamatJalan,
+          if (usulNoTelp != null && usulNoTelp.isNotEmpty)
+            'usul_no_telp': usulNoTelp,
+          if (usulEmailKontak != null && usulEmailKontak.isNotEmpty)
+            'usul_email_kontak': usulEmailKontak,
           'usul_latitude': ?usulLatitude,
           'usul_longitude': ?usulLongitude,
           'usul_tanggal_lahir': ?usulTanggalLahir,

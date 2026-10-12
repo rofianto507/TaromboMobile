@@ -141,27 +141,32 @@ class _PendidikanFormState extends ConsumerState<_PendidikanForm> {
     final lulusTahun = _lulus ? _tahunAtauNull(_lulusTahun.text) : null;
     if (masuk != null && lulusTahun != null && lulusTahun < masuk) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tahun lulus tidak boleh sebelum tahun masuk.')),
+        const SnackBar(
+          content: Text('Tahun lulus tidak boleh sebelum tahun masuk.'),
+        ),
       );
       return;
     }
     setState(() => _saving = true);
     try {
-      await ref.read(riwayatRepositoryProvider).tambahPendidikan(widget.orangId, {
-        'jenjang': _jenjang,
-        'institusi': _institusi.text.trim(),
-        if (_jurusan.text.trim().isNotEmpty) 'jurusan': _jurusan.text.trim(),
-        'tahun_masuk': masuk ?? 0,
-        'tahun_lulus': lulusTahun ?? 0,
-        'lulus': _lulus,
-      });
+      await ref.read(riwayatRepositoryProvider).tambahPendidikan(
+        widget.orangId,
+        {
+          'jenjang': _jenjang,
+          'institusi': _institusi.text.trim(),
+          if (_jurusan.text.trim().isNotEmpty) 'jurusan': _jurusan.text.trim(),
+          'tahun_masuk': masuk ?? 0,
+          'tahun_lulus': lulusTahun ?? 0,
+          'lulus': _lulus,
+        },
+      );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
     }
   }
 
@@ -189,8 +194,9 @@ class _PendidikanFormState extends ConsumerState<_PendidikanForm> {
             controller: _institusi,
             decoration: _dec('Institusi *'),
             textCapitalization: TextCapitalization.words,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Institusi wajib diisi' : null,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? 'Institusi wajib diisi'
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -274,12 +280,17 @@ class _PekerjaanFormState extends ConsumerState<_PekerjaanForm> {
     try {
       // tarombo.bidang dikelola pengurus (menu Konfigurasi) — selalu ambil dari server.
       final rows =
-          await ref.read(apiClientProvider).callKw(
-                model: 'tarombo.bidang',
-                method: 'search_read',
-                args: [[]],
-                kwargs: {'fields': ['id', 'name'], 'order': 'name'},
-              )
+          await ref
+                  .read(apiClientProvider)
+                  .callKw(
+                    model: 'tarombo.bidang',
+                    method: 'search_read',
+                    args: [[]],
+                    kwargs: {
+                      'fields': ['id', 'name'],
+                      'order': 'name',
+                    },
+                  )
               as List;
       if (mounted) {
         setState(() => _bidangList = rows.cast<Map<String, dynamic>>());
@@ -295,27 +306,32 @@ class _PekerjaanFormState extends ConsumerState<_PekerjaanForm> {
     final selesai = _sekarang ? null : _tahunAtauNull(_selesai.text);
     if (mulai != null && selesai != null && selesai < mulai) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tahun selesai tidak boleh sebelum tahun mulai.')),
+        const SnackBar(
+          content: Text('Tahun selesai tidak boleh sebelum tahun mulai.'),
+        ),
       );
       return;
     }
     setState(() => _saving = true);
     try {
-      await ref.read(riwayatRepositoryProvider).tambahPekerjaan(widget.orangId, {
-        'jabatan': _jabatan.text.trim(),
-        if (_instansi.text.trim().isNotEmpty) 'instansi': _instansi.text.trim(),
-        if (_bidangId != null) 'bidang_id': _bidangId,
-        'tahun_mulai': mulai ?? 0,
-        'tahun_selesai': selesai ?? 0,
-        'sekarang': _sekarang,
-      });
+      await ref
+          .read(riwayatRepositoryProvider)
+          .tambahPekerjaan(widget.orangId, {
+            'jabatan': _jabatan.text.trim(),
+            if (_instansi.text.trim().isNotEmpty)
+              'instansi': _instansi.text.trim(),
+            if (_bidangId != null) 'bidang_id': _bidangId,
+            'tahun_mulai': mulai ?? 0,
+            'tahun_selesai': selesai ?? 0,
+            'sekarang': _sekarang,
+          });
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
     }
   }
 

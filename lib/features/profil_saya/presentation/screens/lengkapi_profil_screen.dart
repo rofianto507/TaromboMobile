@@ -33,6 +33,8 @@ class LengkapiProfilScreen extends ConsumerStatefulWidget {
 
 class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
   final _alamat = TextEditingController();
+  final _telp = TextEditingController();
+  final _email = TextEditingController();
   bool _terisi = false;
   bool _saving = false;
 
@@ -47,6 +49,8 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
   @override
   void dispose() {
     _alamat.dispose();
+    _telp.dispose();
+    _email.dispose();
     super.dispose();
   }
 
@@ -61,6 +65,8 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
     _kecamatan = p.kecamatan;
     _desa = p.desa;
     _alamat.text = p.alamatJalan ?? '';
+    _telp.text = p.noTelp ?? '';
+    _email.text = p.emailKontak ?? '';
     _titik = (p.latitude != null && p.longitude != null)
         ? LatLng(p.latitude!, p.longitude!)
         : null;
@@ -168,6 +174,10 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
     }
     final alamat = _alamat.text.trim();
     if (alamat != (awal.alamatJalan ?? '')) vals['alamat_jalan'] = alamat;
+    final telp = _telp.text.trim();
+    if (telp != (awal.noTelp ?? '')) vals['no_telp'] = telp;
+    final email = _email.text.trim();
+    if (email != (awal.emailKontak ?? '')) vals['email_kontak'] = email;
 
     // Titik rumah: dikirim berpasangan; menghapusnya mengirim keduanya false.
     final titikAwal = (awal.latitude != null && awal.longitude != null)
@@ -369,6 +379,31 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
         ),
         const _Catatan(
           'Tanggal persisnya hanya terlihat oleh Anda dan pengurus. Anggota lain hanya melihat umur.',
+        ),
+        const SizedBox(height: 24),
+
+        const _Judul('Kontak'),
+        TextField(
+          controller: _telp,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Nomor telepon',
+            prefixIcon: Icon(Icons.phone_outlined),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _email,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            prefixIcon: Icon(Icons.email_outlined),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const _Catatan(
+          'Nomor telepon dan email terlihat oleh anggota lain yang sudah terverifikasi, agar kerabat dapat menghubungi Anda. Tidak terlihat oleh publik.',
         ),
         const SizedBox(height: 24),
 
