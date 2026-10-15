@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 /// Biru khas lencana terverifikasi (mirip Instagram/Facebook).
 const kBiruVerified = Color(0xFF1D9BF0);
 
-/// Lencana centang biru untuk anggota yang sudah tersambung ke akun.
+/// Lencana centang biru untuk anggota yang akunnya sudah tertaut dan
+/// diverifikasi pengurus. Keterangannya "Akun terverifikasi" supaya tidak
+/// tertukar dengan status data "Terverifikasi" di tempat lain.
 class VerifiedBadge extends StatelessWidget {
   final double size;
   const VerifiedBadge({super.key, this.size = 16});
@@ -11,7 +13,7 @@ class VerifiedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Terverifikasi',
+      message: 'Akun terverifikasi',
       child: Icon(Icons.verified_rounded, size: size, color: kBiruVerified),
     );
   }
