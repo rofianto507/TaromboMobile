@@ -9,7 +9,7 @@ import '../../notifikasi_nav.dart';
 import '../providers/notifikasi_provider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold   = Color(0xFFC8A24A);
+const _kGold = Color(0xFFC8A24A);
 
 class NotifikasiScreen extends ConsumerWidget {
   const NotifikasiScreen({super.key});
@@ -25,13 +25,19 @@ class NotifikasiScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.done_all_rounded),
             tooltip: 'Tandai semua dibaca',
-            onPressed: () => ref.read(notifikasiServiceProvider).tandaiSemuaDibaca(),
+            onPressed: () =>
+                ref.read(notifikasiServiceProvider).tandaiSemuaDibaca(),
           ),
         ],
       ),
       body: listAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Gagal memuat notifikasi.\n$e', textAlign: TextAlign.center)),
+        error: (e, _) => Center(
+          child: Text(
+            'Gagal memuat notifikasi.\n$e',
+            textAlign: TextAlign.center,
+          ),
+        ),
         data: (items) {
           if (items.isEmpty) {
             return Center(
@@ -40,9 +46,19 @@ class NotifikasiScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.notifications_none_rounded, size: 64, color: _kGreen1.withValues(alpha: 0.4)),
+                    Icon(
+                      Icons.notifications_none_rounded,
+                      size: 64,
+                      color: _kGreen1.withValues(alpha: 0.4),
+                    ),
                     const SizedBox(height: 16),
-                    Text('Belum ada notifikasi', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                    Text(
+                      'Belum ada notifikasi',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -70,6 +86,12 @@ class _NotifikasiTile extends ConsumerWidget {
   // tarombo_usulan.py/tarombo_klaim_akun.py), bukan menebak dari teks judul
   // — notifikasi lama sebelum field ini ada otomatis fallback ke ikon netral.
   (IconData, Color) get _tampilan {
+    // Berita & agenda baru: ikon sesuai jenisnya, bukan ikon status klaim.
+    if (item.tipe == 'berita') {
+      return item.data['jenis'] == 'agenda'
+          ? (Icons.event_rounded, _kGold)
+          : (Icons.newspaper_rounded, _kGreen1);
+    }
     switch (item.data['hasil']) {
       case 'disetujui':
         return (Icons.check_circle_rounded, Colors.green);
@@ -91,7 +113,9 @@ class _NotifikasiTile extends ConsumerWidget {
       ),
       title: Text(
         item.judul,
-        style: TextStyle(fontWeight: item.dibaca ? FontWeight.normal : FontWeight.w700),
+        style: TextStyle(
+          fontWeight: item.dibaca ? FontWeight.normal : FontWeight.w700,
+        ),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,18 +134,20 @@ class _NotifikasiTile extends ConsumerWidget {
       isThreeLine: item.isi != null,
       onTap: () async {
         if (!item.dibaca) {
-          await ref.read(apiClientProvider).callKw(
-            model: 'tarombo.notifikasi',
-            method: 'tandai_dibaca',
-            args: [
-              [item.id]
-            ],
-          );
+          await ref
+              .read(apiClientProvider)
+              .callKw(
+                model: 'tarombo.notifikasi',
+                method: 'tandai_dibaca',
+                args: [
+                  [item.id],
+                ],
+              );
           ref.invalidate(notifikasiListProvider);
           ref.invalidate(notifikasiUnreadCountProvider);
         }
         if (!context.mounted) return;
-        final path = pathUntukTipeNotifikasi(item.tipe);
+        final path = pathUntukTipeNotifikasi(item.tipe, item.data);
         if (path == '/home') {
           ref.invalidate(klaimNotifierProvider);
           ref.invalidate(authNotifierProvider);

@@ -55,7 +55,9 @@ class PushService {
     }
 
     await _local
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_channel);
     await _local.initialize(
       const InitializationSettings(
@@ -120,7 +122,11 @@ class PushService {
     if (token == null) return;
     try {
       final api = ref.read(apiClientProvider);
-      await api.callKw(model: 'tarombo.push_token', method: 'unregister_token', args: [token]);
+      await api.callKw(
+        model: 'tarombo.push_token',
+        method: 'unregister_token',
+        args: [token],
+      );
     } catch (_) {
       // Best-effort.
     }
@@ -140,7 +146,8 @@ class PushService {
       n.body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          _channel.id, _channel.name,
+          _channel.id,
+          _channel.name,
           channelDescription: _channel.description,
           importance: Importance.high,
           priority: Priority.high,
@@ -149,11 +156,16 @@ class PushService {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
-      payload: pathUntukTipeNotifikasi(message.data['tipe'] as String?),
+      payload: pathUntukTipeNotifikasi(
+        message.data['tipe'] as String?,
+        message.data,
+      ),
     );
   }
 
-  void _tanganiTap(RemoteMessage message) => _navigasiKe(pathUntukTipeNotifikasi(message.data['tipe'] as String?));
+  void _tanganiTap(RemoteMessage message) => _navigasiKe(
+    pathUntukTipeNotifikasi(message.data['tipe'] as String?, message.data),
+  );
 
   void _navigasiKe(String path) {
     if (path.startsWith('/home')) {

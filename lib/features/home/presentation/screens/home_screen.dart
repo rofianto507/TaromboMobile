@@ -17,7 +17,7 @@ const _kGold = Color(0xFFC8A24A);
 // Seberapa jauh grid menu "naik" menimpa bagian bawah header hijau — sengaja
 // sampai separuh tinggi tile baris atas (Profil Keluarga/Hitung Partuturan),
 // bukan cuma sliver tipis di tepi.
-const _kOverlapTinggi = 52.0;
+const _kOverlapTinggi = 46.0;
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -68,20 +68,26 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           ListView(
-            padding: EdgeInsets.zero,
+            // Ruang bawah supaya baris terakhir (slider/kartu kelengkapan) bisa
+            // digulir naik penuh di atas bottom bar pada layar pendek.
+            padding: EdgeInsets.only(
+              bottom: 24 + MediaQuery.of(context).padding.bottom,
+            ),
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
               _Header(user: user, orang: orang, isVerified: isVerified),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                 child: GridView.count(
-                  // Tiga kolom: tile lebih pendek supaya area Berita & Agenda
-                  // di bawahnya terlihat tanpa harus menggulir jauh.
-                  crossAxisCount: 3,
+                  // Dua kolom x tiga baris, tile dipendekkan (rasio lebar:tinggi
+                  // besar) supaya area Berita & Agenda mulai terlihat; halaman
+                  // dapat digulir bila layar pendek.
+                  crossAxisCount: 2,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 10,
+                  crossAxisSpacing: 12,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.02,
+                  childAspectRatio: 2.15,
                   children: [
                     _MenuTile(
                       icon: Icons.family_restroom_rounded,
@@ -126,6 +132,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               const BeritaSlider(),
+              const SizedBox(height: 4),
               if (kelengkapan != null && !kelengkapan.lengkap)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -338,7 +345,7 @@ class _MenuTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Stack(
               children: [
                 Column(
@@ -346,10 +353,10 @@ class _MenuTile extends StatelessWidget {
                   children: [
                     Icon(
                       icon,
-                      size: 28,
+                      size: 24,
                       color: locked ? Colors.grey.shade400 : _kGreen1,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Text(
                       label,
                       textAlign: TextAlign.center,
