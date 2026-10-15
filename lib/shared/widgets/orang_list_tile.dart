@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/orang_format.dart';
 import 'orang_avatar.dart';
+import 'verified_badge.dart';
 
 /// Baris orang yang seragam untuk semua hasil pencarian:
 /// foto, nama lengkap, lalu "Sundut N - Nama Ayah".
@@ -30,10 +31,10 @@ class OrangListTile extends StatelessWidget {
         jenisKelamin: (orang['jenis_kelamin'] as String?) ?? 'L',
         radius: 20,
       ),
-      title: Text(
-        orang['name'] as String,
+      title: OrangNama(
+        nama: orang['name'] as String,
+        terverifikasi: orang['terhubung_akun'] == true,
         maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: (sub.isEmpty && keterangan == null)

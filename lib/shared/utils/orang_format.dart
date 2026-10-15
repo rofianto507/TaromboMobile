@@ -8,7 +8,14 @@
 // seperti subtitel di bagian lain aplikasi.
 
 /// Field yang perlu diminta ke server agar [subtitleOrang] bisa disusun.
-const kOrangSearchFields = ['id', 'name', 'sundut', 'jenis_kelamin', 'ayah_id'];
+const kOrangSearchFields = [
+  'id',
+  'name',
+  'sundut',
+  'jenis_kelamin',
+  'ayah_id',
+  'terhubung_akun',
+];
 
 /// Pencarian baru dijalankan setelah sekurang-kurangnya sekian huruf diketik.
 const kMinHurufCari = 2;

@@ -7,6 +7,7 @@ import 'package:graphview/graphview.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/notifikasi_button.dart';
+import '../../../../shared/widgets/verified_badge.dart';
 import '../../../../shared/utils/debouncer.dart';
 import '../../../../shared/utils/orang_format.dart';
 import '../../../../shared/widgets/orang_list_tile.dart';
@@ -486,10 +487,11 @@ class _PohonCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              data.name,
+            OrangNama(
+              nama: data.name,
+              terverifikasi: data.terhubungAkun,
+              badgeSize: 13,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 11,

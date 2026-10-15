@@ -10,6 +10,7 @@ class PohonNode {
   final String jenisKelamin;
   final String status;
   final bool punyaFoto;
+  final bool terhubungAkun;
   final bool selected;
   final bool collapsed;
   final bool hasMore;
@@ -28,6 +29,7 @@ class PohonNode {
     required this.jenisKelamin,
     required this.status,
     required this.punyaFoto,
+    this.terhubungAkun = false,
     required this.selected,
     required this.collapsed,
     required this.hasMore,
@@ -43,18 +45,19 @@ class PohonNode {
   bool get tertutup => collapsed || hasMore || hasMoreAtas;
 
   factory PohonNode.fromJson(Map<String, dynamic> json) => PohonNode(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        sundut: json['sundut'] as int? ?? 0,
-        jenisKelamin: asOdooString(json['jenis_kelamin']) ?? '',
-        status: asOdooString(json['status']) ?? '',
-        punyaFoto: json['punya_foto'] == true,
-        selected: json['selected'] == true,
-        collapsed: json['collapsed'] == true,
-        hasMore: json['has_more'] == true,
-        hasMoreAtas: json['has_more_atas'] == true,
-        children: (json['children'] as List? ?? const [])
-            .map((e) => PohonNode.fromJson((e as Map).cast<String, dynamic>()))
-            .toList(),
-      );
+    id: json['id'] as int,
+    name: json['name'] as String,
+    sundut: json['sundut'] as int? ?? 0,
+    jenisKelamin: asOdooString(json['jenis_kelamin']) ?? '',
+    status: asOdooString(json['status']) ?? '',
+    punyaFoto: json['punya_foto'] == true,
+    terhubungAkun: json['terhubung_akun'] == true,
+    selected: json['selected'] == true,
+    collapsed: json['collapsed'] == true,
+    hasMore: json['has_more'] == true,
+    hasMoreAtas: json['has_more_atas'] == true,
+    children: (json['children'] as List? ?? const [])
+        .map((e) => PohonNode.fromJson((e as Map).cast<String, dynamic>()))
+        .toList(),
+  );
 }

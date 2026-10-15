@@ -10,6 +10,8 @@ class OrangRingkas {
   // untuk anak = urutan lahir ("anak ke-N", dari field `urutan` backend).
   final int level;
   final bool masihHidup;
+  // Sudah tersambung ke akun anggota (lencana terverifikasi).
+  final bool terhubungAkun;
   final int
   jumlahAnak; // supaya kelihatan cabang ini masih berlanjut atau tidak, tanpa perlu buka profilnya
 
@@ -21,6 +23,7 @@ class OrangRingkas {
     this.punguan,
     this.level = 0,
     this.masihHidup = true,
+    this.terhubungAkun = false,
     this.jumlahAnak = 0,
   });
 }
@@ -111,6 +114,7 @@ class ProfileDetail {
   final String jenisKelamin;
   final String status;
   final String? punguan;
+  final bool terhubungAkun;
   final int? ayahId;
   final String? ayahName;
   final List<OrangRingkas>
@@ -144,6 +148,7 @@ class ProfileDetail {
     required this.jenisKelamin,
     required this.status,
     this.punguan,
+    this.terhubungAkun = false,
     this.ayahId,
     this.ayahName,
     this.leluhur = const [],

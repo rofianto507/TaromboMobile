@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../shared/widgets/verified_badge.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/arsip_labels.dart';
@@ -289,8 +290,10 @@ class _HeaderSection extends ConsumerWidget {
                   radius: 48,
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  d.name,
+                OrangNama(
+                  nama: d.name,
+                  terverifikasi: d.terhubungAkun,
+                  badgeSize: 22,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -948,7 +951,13 @@ class _OrangTile extends StatelessWidget {
       ),
       title: Row(
         children: [
-          Flexible(child: Text(orang.name, overflow: TextOverflow.ellipsis)),
+          Flexible(
+            child: OrangNama(
+              nama: orang.name,
+              terverifikasi: orang.terhubungAkun,
+              maxLines: 1,
+            ),
+          ),
           if (!orang.masihHidup) ...[
             const SizedBox(width: 6),
             Text(
