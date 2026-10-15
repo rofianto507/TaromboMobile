@@ -22,8 +22,10 @@ const _kGold = Color(0xFFC8A24A);
 class ProfileDetailScreen extends ConsumerStatefulWidget {
   final int orangId;
 
-  /// Tab yang dibuka pertama kali: 'domisili' (bawaan), 'keluarga', 'riwayat',
-  /// 'arsip', atau 'kontak' (hanya ada untuk akun terverifikasi). Dipakai tautan dari layar lain, mis. Lengkapi Profil.
+  /// Tab yang dibuka pertama kali: 'kontak' (telepon, email, dan domisili;
+  /// hanya ada untuk akun terverifikasi), 'keluarga', 'riwayat', atau
+  /// 'arsip'. 'domisili' dianggap 'kontak' karena kedua tab sudah digabung.
+  /// Dipakai tautan dari layar lain, mis. Lengkapi Profil.
   final String? tabAwal;
   const ProfileDetailScreen({super.key, required this.orangId, this.tabAwal});
 
@@ -96,15 +98,14 @@ class _ProfilTabsState extends State<_ProfilTabs>
   late List<String> _kunci;
 
   static const _judul = {
-    'domisili': 'Domisili',
     'keluarga': 'Keluarga',
     'riwayat': 'Riwayat',
     'arsip': 'Arsip',
     'kontak': 'Kontak',
   };
 
+  // Tab Kontak (telepon, email, domisili) hanya untuk akun terverifikasi.
   List<String> _hitungKunci() => [
-    'domisili',
     if (widget.d.kontakTerverifikasi) 'kontak',
     'keluarga',
     'riwayat',
@@ -115,7 +116,8 @@ class _ProfilTabsState extends State<_ProfilTabs>
   void initState() {
     super.initState();
     _kunci = _hitungKunci();
-    final awal = _kunci.indexOf(widget.tabAwal ?? '');
+    final tujuan = widget.tabAwal == 'domisili' ? 'kontak' : widget.tabAwal;
+    final awal = _kunci.indexOf(tujuan ?? '');
     _tabController = TabController(
       length: _kunci.length,
       vsync: this,
@@ -158,7 +160,7 @@ class _ProfilTabsState extends State<_ProfilTabs>
       case 'kontak':
         return _KontakTab(d: d);
       default:
-        return _DomisiliTab(d: d);
+        return _KeluargaTab(d: d);
     }
   }
 
@@ -190,23 +192,41 @@ class _ProfilTabsState extends State<_ProfilTabs>
   }
 }
 
-/// Tab Kontak — hanya dirender untuk akun terverifikasi (lihat _ProfilTabs).
+/// Tab Kontak — telepon, email, dan domisili. Hanya dirender untuk akun
+/// terverifikasi (lihat _ProfilTabs).
 class _KontakTab extends StatelessWidget {
   final ProfileDetail d;
   const _KontakTab({required this.d});
 
+  Widget _judul(IconData ikon, String teks) => Row(
+    children: [
+      Icon(ikon, color: _kGold),
+      const SizedBox(width: 8),
+      Text(
+        teks,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
+          color: _kGreen1,
+        ),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
-    final ada = d.noTelp != null || d.emailKontak != null;
+    final info = d.domisili;
+    final adaKontak = d.noTelp != null || d.emailKontak != null;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       children: [
-        if (!ada)
+        _judul(Icons.contact_phone_outlined, 'Kontak'),
+        const SizedBox(height: 8),
+        if (!adaKontak)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'Belum ada kontak yang dicantumkan.',
-              textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600),
             ),
           )
@@ -229,9 +249,30 @@ class _KontakTab extends StatelessWidget {
               uri: Uri(scheme: 'mailto', path: d.emailKontak!),
             ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
+        Divider(height: 1, color: Colors.grey.shade300),
+        const SizedBox(height: 20),
+        _judul(Icons.place_rounded, 'Domisili'),
+        const SizedBox(height: 12),
+        if (info.lengkap == null)
+          const Text(
+            'Belum ada data domisili.',
+            style: TextStyle(color: Colors.grey),
+          )
+        else ...[
+          Text(
+            info.lengkap!,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          if (info.negara != null)
+            Text(
+              info.negara!,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+        ],
+        const SizedBox(height: 24),
         Text(
-          'Kontak hanya terlihat oleh anggota yang akunnya sudah terverifikasi.',
+          'Kontak dan domisili hanya terlihat oleh anggota yang akunnya sudah terverifikasi.',
           style: TextStyle(
             color: Colors.grey.shade500,
             fontSize: 12,
@@ -436,64 +477,6 @@ class _KontakBaris extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => _buka(context),
-    );
-  }
-}
-
-class _DomisiliTab extends StatelessWidget {
-  final ProfileDetail d;
-  const _DomisiliTab({required this.d});
-
-  @override
-  Widget build(BuildContext context) {
-    final info = d.domisili;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.place_rounded, color: _kGold),
-            const SizedBox(width: 8),
-            const Text(
-              'Domisili',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: _kGreen1,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (info.lengkap == null)
-          const Text(
-            'Belum ada data domisili.',
-            style: TextStyle(color: Colors.grey),
-          )
-        else ...[
-          if (info.lengkap != null)
-            Text(
-              info.lengkap!,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-          if (info.negara != null)
-            Text(
-              info.negara!,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
-          if (info.catatan != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              info.catatan!,
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ],
-      ],
     );
   }
 }
