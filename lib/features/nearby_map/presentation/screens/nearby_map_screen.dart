@@ -1,22 +1,27 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/distance.dart';
-import '../../../../shared/utils/orang_labels.dart';
-import '../../../klaim/domain/entities/klaim_info.dart';
-import '../../../klaim/presentation/providers/klaim_provider.dart';
-import '../../domain/entities/kerabat_lokasi.dart';
+import '../../domain/entities/sebaran_wilayah.dart';
 import '../providers/nearby_map_provider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold   = Color(0xFFC8A24A);
+const _kGold = Color(0xFFC8A24A);
 
-// Titik tengah default kalau izin lokasi ditolak: sekitar Danau Toba/Silaen.
+// Titik tengah bila lokasi perangkat tidak diketahui: sekitar Danau Toba.
 const _kDefaultCenter = LatLng(2.6, 99.0);
 
+// Hanya sampai kabupaten/kota: koordinat kecamatan dan desa belum tersedia,
+// jadi marker keduanya akan menumpuk di titik kabupaten. Tambahkan kembali
+// ('3', 'Kecamatan') dan ('4', 'Desa/Kelurahan') bila koordinatnya sudah ada.
+const _tingkatList = [('1', 'Provinsi'), ('2', 'Kabupaten/Kota')];
+
+/// Sebaran anggota: marker per wilayah berisi jumlah anggota yang berdomisili
+/// di sana, dengan filter tingkat wilayah. Menggantikan peta "Kerabat
+/// Terdekat" yang dulu memakai titik rumah per orang.
 class NearbyMapScreen extends ConsumerStatefulWidget {
   const NearbyMapScreen({super.key});
 
@@ -26,294 +31,325 @@ class NearbyMapScreen extends ConsumerStatefulWidget {
 
 class _NearbyMapScreenState extends ConsumerState<NearbyMapScreen> {
   final _mapController = MapController();
-  Position? _myPosition;
-  bool _locationDenied = false;
-  bool _togglingBerbagi = false;
-  String? _toggleError;
+  String _tingkat = '2';
+  Position? _posisi;
 
   @override
   void initState() {
     super.initState();
-    _initLocation();
+    _ambilPosisi();
   }
 
-  Future<void> _initLocation() async {
+  /// Posisi perangkat hanya dipakai di sisi aplikasi (memusatkan peta dan
+  /// mengurutkan wilayah terdekat); tidak pernah dikirim ke server.
+  Future<void> _ambilPosisi() async {
     try {
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      var izin = await Geolocator.checkPermission();
+      if (izin == LocationPermission.denied) {
+        izin = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        setState(() => _locationDenied = true);
+      if (izin == LocationPermission.denied ||
+          izin == LocationPermission.deniedForever) {
         return;
       }
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        setState(() => _locationDenied = true);
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium));
-      if (mounted) setState(() => _myPosition = pos);
-    } catch (_) {
-      if (mounted) setState(() => _locationDenied = true);
-    }
-  }
-
-  Future<void> _toggleBerbagi(bool value) async {
-    setState(() {
-      _togglingBerbagi = true;
-      _toggleError = null;
-    });
-    try {
-      final service = ref.read(berbagiLokasiServiceProvider);
-      if (value) {
-        final pos = _myPosition ?? await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium));
-        _myPosition = pos;
-        await service.aktifkan(pos.latitude, pos.longitude);
-      } else {
-        await service.nonaktifkan();
-      }
-    } catch (e) {
-      setState(() => _toggleError = 'Gagal mengubah pengaturan. Pastikan GPS aktif dan coba lagi.');
-    } finally {
-      if (mounted) setState(() => _togglingBerbagi = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final kerabatAsync = ref.watch(kerabatLokasiProvider);
-    final myOrang = ref.watch(klaimNotifierProvider).valueOrNull?.orang;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Kerabat Terdekat')),
-      body: kerabatAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Gagal memuat data peta.\n$e', textAlign: TextAlign.center)),
-        data: (kerabat) {
-          for (final k in kerabat) {
-            if (_myPosition != null) {
-              k.jarakKm = haversineKm(_myPosition!.latitude, _myPosition!.longitude, k.lat, k.lng);
-            }
-          }
-          final sorted = [...kerabat]..sort((a, b) => (a.jarakKm ?? 1e9).compareTo(b.jarakKm ?? 1e9));
-          final center = _myPosition != null
-              ? LatLng(_myPosition!.latitude, _myPosition!.longitude)
-              : (kerabat.isNotEmpty ? LatLng(kerabat.first.lat, kerabat.first.lng) : _kDefaultCenter);
-
-          return Column(
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(initialCenter: center, initialZoom: _myPosition != null ? 11 : 8),
-                      children: [
-                        TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'id.selstudio.tarombo_mobile',
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            if (_myPosition != null)
-                              Marker(
-                                point: LatLng(_myPosition!.latitude, _myPosition!.longitude),
-                                width: 24,
-                                height: 24,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 3),
-                                    boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
-                                  ),
-                                ),
-                              ),
-                            for (final k in kerabat)
-                              Marker(
-                                point: LatLng(k.lat, k.lng),
-                                width: 40,
-                                height: 40,
-                                child: GestureDetector(
-                                  onTap: () => _showKerabatSheet(context, k),
-                                  child: Icon(
-                                    Icons.location_on,
-                                    color: k.jenisKelamin == 'P' ? Colors.pink.shade400 : _kGreen1,
-                                    size: 40,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    if (_locationDenied)
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
-                          child: const Text(
-                            'Izin lokasi tidak diberikan — jarak ke kerabat tidak bisa dihitung.',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (kerabat.isNotEmpty)
-                SizedBox(
-                  height: 96,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    itemCount: sorted.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) {
-                      final k = sorted[i];
-                      return _KerabatChip(
-                        kerabat: k,
-                        onTap: () {
-                          _mapController.move(LatLng(k.lat, k.lng), 13);
-                          _showKerabatSheet(context, k);
-                        },
-                      );
-                    },
-                  ),
-                ),
-              _buildBerbagiCard(myOrang),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBerbagiCard(MyOrang? myOrang) {
-    final aktif = myOrang?.berbagiLokasi == true;
-    return SafeArea(
-      top: false,
-      child: Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: _kGreen1, borderRadius: BorderRadius.circular(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.share_location_rounded, color: _kGold, size: 20),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Bagikan lokasi saya ke kerabat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                ),
-                _togglingBerbagi
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Switch(
-                        value: aktif,
-                        activeTrackColor: _kGold,
-                        onChanged: myOrang == null ? null : _toggleBerbagi,
-                      ),
-              ],
-            ),
-            Text(
-              myOrang == null
-                  ? 'Klaim identitas Anda dulu untuk bisa membagikan lokasi.'
-                  : aktif
-                      ? 'Titik lokasi Anda terlihat oleh seluruh anggota di peta ini.'
-                      : 'Nonaktif — lokasi Anda tidak ditampilkan ke siapa pun.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
-            ),
-            if (_toggleError != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(_toggleError!, style: const TextStyle(color: Colors.orangeAccent, fontSize: 11)),
-              ),
-          ],
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
         ),
-      ),
-    );
+      );
+      if (!mounted) return;
+      setState(() => _posisi = pos);
+      _mapController.move(LatLng(pos.latitude, pos.longitude), 9);
+    } catch (_) {
+      // Tanpa lokasi perangkat peta tetap bisa dipakai.
+    }
   }
 
-  void _showKerabatSheet(BuildContext context, KerabatLokasi k) {
-    showModalBottomSheet(
+  double? _jarak(TitikWilayah t) {
+    if (_posisi == null || !t.punyaTitik) return null;
+    return haversineKm(_posisi!.latitude, _posisi!.longitude, t.lat!, t.lng!);
+  }
+
+  void _tampilkanDetail(TitikWilayah t) {
+    showModalBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(k.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _kGreen1)),
-            const SizedBox(height: 6),
             Text(
-              'Sundut ${k.sundut} • ${jenisKelaminLabel(k.jenisKelamin)}${k.punguan != null ? ' • ${k.punguan}' : ''}',
-              style: TextStyle(color: Colors.grey.shade600),
+              t.nama,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: _kGreen1,
+              ),
             ),
-            if (k.jarakKm != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.social_distance_rounded, size: 16, color: _kGold),
-                  const SizedBox(width: 6),
-                  Text('${formatDistanceKm(k.jarakKm!)} dari lokasi Anda', style: const TextStyle(fontWeight: FontWeight.w600)),
-                ],
+            const SizedBox(height: 4),
+            Text(
+              t.namaLengkap,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Icons.groups_rounded, color: _kGold),
+                const SizedBox(width: 8),
+                Text(
+                  '${t.jumlah} anggota',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            if (t.perkiraan) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Letak di peta diperkirakan dari wilayah induknya.',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
             ],
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: _kGold, foregroundColor: _kGreen1),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  context.push('/profil/${k.id}');
-                },
-                child: const Text('Lihat Profil'),
-              ),
-            ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(sebaranWilayahProvider(_tingkat));
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sebaran Anggota')),
+      body: Column(
+        children: [
+          SizedBox(
+            height: 52,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              children: [
+                for (final (kode, label) in _tingkatList)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(label),
+                      selected: _tingkat == kode,
+                      selectedColor: _kGold.withValues(alpha: 0.25),
+                      labelStyle: TextStyle(
+                        color: _tingkat == kode
+                            ? _kGreen1
+                            : Colors.grey.shade700,
+                        fontWeight: _tingkat == kode
+                            ? FontWeight.w700
+                            : FontWeight.normal,
+                      ),
+                      onSelected: (_) => setState(() => _tingkat = kode),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: async.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Gagal memuat sebaran anggota. Periksa koneksi Anda.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.red.shade700),
+                  ),
+                ),
+              ),
+              data: (data) => _Isi(
+                data: data,
+                posisi: _posisi,
+                controller: _mapController,
+                jarak: _jarak,
+                onTap: _tampilkanDetail,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _KerabatChip extends StatelessWidget {
-  final KerabatLokasi kerabat;
-  final VoidCallback onTap;
-  const _KerabatChip({required this.kerabat, required this.onTap});
+class _Isi extends StatelessWidget {
+  final SebaranWilayah data;
+  final Position? posisi;
+  final MapController controller;
+  final double? Function(TitikWilayah) jarak;
+  final void Function(TitikWilayah) onTap;
+
+  const _Isi({
+    required this.data,
+    required this.posisi,
+    required this.controller,
+    required this.jarak,
+    required this.onTap,
+  });
+
+  /// Diameter marker membesar landai menurut jumlah (skala log).
+  double _ukuran(int jumlah) =>
+      34 + 18 * (math.log(jumlah.clamp(1, 1000)) / math.log(1000));
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 140,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+    final items = [...data.items];
+    items.sort((a, b) {
+      final ja = jarak(a);
+      final jb = jarak(b);
+      if (ja != null && jb != null) return ja.compareTo(jb);
+      if (ja != null) return -1;
+      if (jb != null) return 1;
+      return b.jumlah.compareTo(a.jumlah);
+    });
+    final bertitik = items.where((t) => t.punyaTitik).toList();
+    final pusat = posisi != null
+        ? LatLng(posisi!.latitude, posisi!.longitude)
+        : (bertitik.isNotEmpty
+              ? LatLng(bertitik.first.lat!, bertitik.first.lng!)
+              : _kDefaultCenter);
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          color: _kGold.withValues(alpha: 0.12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            '${data.totalBerwilayah} dari ${data.totalAnggota} anggota sudah '
+            'mengisi domisili pada tingkat ini.',
+            style: TextStyle(color: Colors.grey.shade800, fontSize: 12),
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(kerabat.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: _kGreen1)),
-            const SizedBox(height: 2),
-            Text(
-              kerabat.jarakKm != null ? formatDistanceKm(kerabat.jarakKm!) : 'Sundut ${kerabat.sundut}',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        Expanded(
+          flex: 5,
+          child: FlutterMap(
+            mapController: controller,
+            options: MapOptions(
+              initialCenter: pusat,
+              initialZoom: posisi != null ? 9 : 7,
             ),
-          ],
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'id.selstudio.tarombo_mobile',
+              ),
+              MarkerLayer(
+                markers: [
+                  if (posisi != null)
+                    Marker(
+                      point: LatLng(posisi!.latitude, posisi!.longitude),
+                      width: 22,
+                      height: 22,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                      ),
+                    ),
+                  for (final t in bertitik)
+                    Marker(
+                      point: LatLng(t.lat!, t.lng!),
+                      width: _ukuran(t.jumlah),
+                      height: _ukuran(t.jumlah),
+                      child: GestureDetector(
+                        onTap: () => onTap(t),
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _kGreen1,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: t.perkiraan ? _kGold : Colors.white,
+                              width: 2.5,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(blurRadius: 4, color: Colors.black26),
+                            ],
+                          ),
+                          child: Text(
+                            '${t.jumlah}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
+        Expanded(
+          flex: 4,
+          child: items.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Belum ada anggota yang mengisi domisili pada tingkat ini.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final t = items[i];
+                    final km = jarak(t);
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: _kGreen1,
+                        child: Text(
+                          '${t.jumlah}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      title: Text(t.nama),
+                      subtitle: Text(
+                        [
+                          t.namaLengkap,
+                          if (km != null) '${km.toStringAsFixed(0)} km',
+                        ].join(' • '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        if (t.punyaTitik) {
+                          controller.move(LatLng(t.lat!, t.lng!), 10);
+                        }
+                        onTap(t);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

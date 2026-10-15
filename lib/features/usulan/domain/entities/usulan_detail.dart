@@ -18,6 +18,8 @@ class UsulanDetail {
   final int? usulUrutan;
   final DateTime? usulTanggalLahir;
   final DateTime? usulTanggalWafat;
+  final int? usulTahunLahir;
+  final int? usulTahunWafat;
   final String?
   usulWilayah; // gabungan provinsi/kabupaten/kecamatan/desa yang terisi
   final String? usulAlamatJalan;
@@ -50,6 +52,8 @@ class UsulanDetail {
     this.usulUrutan,
     this.usulTanggalLahir,
     this.usulTanggalWafat,
+    this.usulTahunLahir,
+    this.usulTahunWafat,
     this.usulWilayah,
     this.usulAlamatJalan,
     this.usulNoTelp,

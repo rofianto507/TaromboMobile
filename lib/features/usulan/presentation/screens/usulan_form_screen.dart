@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../shared/utils/odoo_json.dart';
-import '../../../../shared/widgets/lokasi_picker_screen.dart';
 import '../../../../shared/widgets/orang_search_sheet.dart';
+import '../../../../shared/widgets/tahun_picker.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/usulan_provider.dart';
 
@@ -57,10 +55,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   DateTime? _tanggalLahir;
 
   // Alamat & titik lokasi (opsional, berlaku untuk mode Tambah maupun Edit)
-  final _alamatCtrl = TextEditingController();
   final _telpCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  LatLng? _titikLokasi;
 
   // Bersama
   int? _punguanId;
@@ -196,31 +192,19 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     }
   }
 
-  Future<void> _pickLokasi() async {
-    final hasil = await Navigator.push<LatLng>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LokasiPickerScreen(titikAwal: _titikLokasi),
-      ),
-    );
-    if (hasil != null) setState(() => _titikLokasi = hasil);
-  }
-
   Future<void> _pickTanggal({required bool wafat}) async {
-    final awal = (wafat ? _tanggalWafat : _tanggalLahir) ?? DateTime(1950);
-    final hasil = await showDatePicker(
-      context: context,
-      initialDate: awal,
-      firstDate: DateTime(1800),
-      lastDate: DateTime.now(),
-      helpText: wafat ? 'Pilih Tanggal Wafat' : 'Pilih Tanggal Lahir',
+    final awal = (wafat ? _tanggalWafat : _tanggalLahir)?.year ?? 1950;
+    final hasil = await showTahunPicker(
+      context,
+      initial: awal,
+      title: wafat ? 'Pilih Tahun Wafat' : 'Pilih Tahun Lahir',
     );
     if (hasil == null) return;
     setState(() {
       if (wafat) {
-        _tanggalWafat = hasil;
+        _tanggalWafat = DateTime(hasil);
       } else {
-        _tanggalLahir = hasil;
+        _tanggalLahir = DateTime(hasil);
       }
     });
   }
@@ -266,14 +250,9 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           sumberKet: _sumberCtrl.text.trim(),
           catatan: _catatanCtrl.text.trim(),
           fotoBase64: _fotoBase64,
-          usulAlamatJalan: _alamatCtrl.text.trim(),
           usulNoTelp: _telpCtrl.text.trim(),
           usulEmailKontak: _emailCtrl.text.trim(),
-          usulLatitude: _titikLokasi?.latitude,
-          usulLongitude: _titikLokasi?.longitude,
-          usulTanggalLahir: _tanggalLahir == null
-              ? null
-              : DateFormat('yyyy-MM-dd').format(_tanggalLahir!),
+          usulTahunLahir: _tanggalLahir?.year,
         );
       } else {
         await service.submitEdit(
@@ -291,17 +270,10 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           usulSuamiMargaId: _jenisKelamin == 'P' ? _suamiMargaId : null,
           catatan: _catatanCtrl.text.trim(),
           fotoBase64: _fotoBase64,
-          usulAlamatJalan: _alamatCtrl.text.trim(),
           usulNoTelp: _telpCtrl.text.trim(),
           usulEmailKontak: _emailCtrl.text.trim(),
-          usulLatitude: _titikLokasi?.latitude,
-          usulLongitude: _titikLokasi?.longitude,
-          usulTanggalLahir: _tanggalLahir == null
-              ? null
-              : DateFormat('yyyy-MM-dd').format(_tanggalLahir!),
-          usulTanggalWafat: (_masihHidup == 'tidak' && _tanggalWafat != null)
-              ? DateFormat('yyyy-MM-dd').format(_tanggalWafat!)
-              : null,
+          usulTahunLahir: _tanggalLahir?.year,
+          usulTahunWafat: _masihHidup == 'tidak' ? _tanggalWafat?.year : null,
         );
       }
       if (!mounted) return;
@@ -323,7 +295,6 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     _suamiNamaCtrl.dispose();
     _sumberCtrl.dispose();
     _catatanCtrl.dispose();
-    _alamatCtrl.dispose();
     _telpCtrl.dispose();
     _emailCtrl.dispose();
     super.dispose();
@@ -429,17 +400,6 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _alamatCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Alamat Lengkap (opsional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildLokasiPicker(),
-                    const SizedBox(height: 16),
-                    TextFormField(
                       controller: _catatanCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Catatan (opsional)',
@@ -505,7 +465,7 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
       const SizedBox(height: 16),
       _buildJenisKelaminRadio(),
       const SizedBox(height: 8),
-      _buildTanggalPicker(wafat: false, label: 'Tanggal Lahir'),
+      _buildTanggalPicker(wafat: false, label: 'Tahun Lahir'),
       const SizedBox(height: 16),
       ListTile(
         contentPadding: EdgeInsets.zero,
@@ -579,10 +539,10 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           onChanged: (v) => setState(() => _masihHidup = v),
         ),
         const SizedBox(height: 16),
-        _buildTanggalPicker(wafat: false, label: 'Tanggal Lahir'),
+        _buildTanggalPicker(wafat: false, label: 'Tahun Lahir'),
         if (_masihHidup == 'tidak') ...[
           const SizedBox(height: 16),
-          _buildTanggalPicker(wafat: true, label: 'Tanggal Wafat'),
+          _buildTanggalPicker(wafat: true, label: 'Tahun Wafat'),
         ],
         const SizedBox(height: 16),
         TextFormField(
@@ -659,16 +619,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
         wafat ? Icons.church_outlined : Icons.cake_outlined,
         color: nilai != null ? _kGreen1 : Colors.grey.shade500,
       ),
-      title: Text(
-        nilai != null
-            ? DateFormat('d MMMM yyyy', 'id_ID').format(nilai)
-            : label,
-      ),
-      subtitle: Text(
-        nilai != null
-            ? label
-            : 'Ketuk untuk pilih tanggal (boleh cuma tahunnya saja)',
-      ),
+      title: Text(nilai != null ? '${nilai.year}' : label),
+      subtitle: Text(nilai != null ? label : 'Ketuk untuk memilih tahun'),
       trailing: nilai != null
           ? IconButton(
               icon: Icon(
@@ -686,38 +638,6 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
             )
           : const Icon(Icons.calendar_month_outlined),
       onTap: () => _pickTanggal(wafat: wafat),
-    );
-  }
-
-  Widget _buildLokasiPicker() {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      tileColor: const Color(0xFFFAF9F5),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
-      leading: Icon(
-        Icons.pin_drop_outlined,
-        color: _titikLokasi != null ? _kGreen1 : Colors.grey.shade500,
-      ),
-      title: Text(
-        _titikLokasi != null
-            ? '${_titikLokasi!.latitude.toStringAsFixed(5)}, ${_titikLokasi!.longitude.toStringAsFixed(5)}'
-            : 'Titik lokasi belum dipilih (opsional)',
-      ),
-      subtitle: const Text('Ketuk untuk pilih titik di peta'),
-      trailing: _titikLokasi != null
-          ? IconButton(
-              icon: Icon(
-                Icons.close_rounded,
-                size: 18,
-                color: Colors.grey.shade500,
-              ),
-              onPressed: () => setState(() => _titikLokasi = null),
-            )
-          : const Icon(Icons.map_outlined),
-      onTap: _pickLokasi,
     );
   }
 

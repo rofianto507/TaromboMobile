@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/verified_badge.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/utils/orang_labels.dart';
 import '../../../../shared/widgets/app_dialog.dart';
@@ -467,17 +465,12 @@ class _DomisiliTab extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (info.alamatJalan == null && info.lengkap == null)
+        if (info.lengkap == null)
           const Text(
             'Belum ada data domisili.',
             style: TextStyle(color: Colors.grey),
           )
         else ...[
-          if (info.alamatJalan != null)
-            Text(
-              info.alamatJalan!,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
           if (info.lengkap != null)
             Text(
               info.lengkap!,
@@ -500,74 +493,6 @@ class _DomisiliTab extends StatelessWidget {
             ),
           ],
         ],
-        const SizedBox(height: 16),
-        if (info.berbagiLokasi && info.lat != null && info.lng != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: SizedBox(
-              height: 200,
-              child: IgnorePointer(
-                child: FlutterMap(
-                  // initialCenter hanya dibaca saat peta pertama dibuat. Kunci
-                  // berdasarkan koordinat memaksa peta dibangun ulang bila titik
-                  // berubah (mis. sesudah Lengkapi Profil), kalau tidak kamera
-                  // tetap di posisi lama sementara penandanya sudah pindah.
-                  key: ValueKey('${info.lat}_${info.lng}'),
-                  options: MapOptions(
-                    initialCenter: LatLng(info.lat!, info.lng!),
-                    initialZoom: 13,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'id.selstudio.tarombo_mobile',
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: LatLng(info.lat!, info.lng!),
-                          width: 40,
-                          height: 40,
-                          child: Icon(
-                            Icons.location_on,
-                            color: d.jenisKelamin == 'P'
-                                ? Colors.pink.shade400
-                                : _kGreen1,
-                            size: 40,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.location_off_outlined,
-                  color: Colors.grey.shade500,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Titik lokasi tidak dibagikan oleh orang ini.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
       ],
     );
   }

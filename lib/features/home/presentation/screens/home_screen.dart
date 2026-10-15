@@ -111,7 +111,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     _MenuTile(
                       icon: Icons.map_outlined,
-                      label: 'Kerabat Terdekat',
+                      label: 'Sebaran Anggota',
                       onTap: () => context.push('/peta-kerabat'),
                     ),
                     _MenuTile(

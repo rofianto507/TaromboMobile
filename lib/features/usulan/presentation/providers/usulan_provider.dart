@@ -89,6 +89,8 @@ final usulanDetailProvider = FutureProvider.autoDispose
                     'usul_urutan',
                     'usul_tanggal_lahir',
                     'usul_tanggal_wafat',
+                    'usul_tahun_lahir',
+                    'usul_tahun_wafat',
                     'usul_provinsi_id',
                     'usul_kabupaten_id',
                     'usul_kecamatan_id',
@@ -166,6 +168,14 @@ final usulanDetailProvider = FutureProvider.autoDispose
         usulUrutan: r['usul_urutan'] == false ? null : r['usul_urutan'] as int?,
         usulTanggalLahir: asOdooDate(r['usul_tanggal_lahir']),
         usulTanggalWafat: asOdooDate(r['usul_tanggal_wafat']),
+        usulTahunLahir:
+            r['usul_tahun_lahir'] is int && r['usul_tahun_lahir'] > 0
+            ? r['usul_tahun_lahir'] as int
+            : null,
+        usulTahunWafat:
+            r['usul_tahun_wafat'] is int && r['usul_tahun_wafat'] > 0
+            ? r['usul_tahun_wafat'] as int
+            : null,
         usulWilayah: wilayahBagian.isEmpty ? null : wilayahBagian.join(' - '),
         usulAlamatJalan: asOdooString(r['usul_alamat_jalan']),
         usulNoTelp: asOdooString(r['usul_no_telp']),
@@ -213,7 +223,7 @@ class UsulanSubmitService {
     String? usulEmailKontak,
     double? usulLatitude,
     double? usulLongitude,
-    String? usulTanggalLahir,
+    int? usulTahunLahir,
   }) async {
     final api = ref.read(apiClientProvider);
     final id = await api.callKw(
@@ -237,7 +247,7 @@ class UsulanSubmitService {
             'usul_email_kontak': usulEmailKontak,
           'usul_latitude': ?usulLatitude,
           'usul_longitude': ?usulLongitude,
-          'usul_tanggal_lahir': ?usulTanggalLahir,
+          'usul_tahun_lahir': ?usulTahunLahir,
         },
       ],
     );
@@ -269,8 +279,8 @@ class UsulanSubmitService {
     String? usulEmailKontak,
     double? usulLatitude,
     double? usulLongitude,
-    String? usulTanggalLahir,
-    String? usulTanggalWafat,
+    int? usulTahunLahir,
+    int? usulTahunWafat,
   }) async {
     final api = ref.read(apiClientProvider);
     final id = await api.callKw(
@@ -299,8 +309,8 @@ class UsulanSubmitService {
             'usul_email_kontak': usulEmailKontak,
           'usul_latitude': ?usulLatitude,
           'usul_longitude': ?usulLongitude,
-          'usul_tanggal_lahir': ?usulTanggalLahir,
-          'usul_tanggal_wafat': ?usulTanggalWafat,
+          'usul_tahun_lahir': ?usulTahunLahir,
+          'usul_tahun_wafat': ?usulTahunWafat,
         },
       ],
     );

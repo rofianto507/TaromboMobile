@@ -211,23 +211,17 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             label: 'Anak ke-',
             value: '${d.usulUrutan}',
           ),
-        if (d.usulTanggalLahir != null)
+        if ((d.usulTahunLahir ?? d.usulTanggalLahir?.year) != null)
           _InfoRow(
             icon: Icons.cake_outlined,
-            label: 'Tanggal Lahir',
-            value: DateFormat(
-              'd MMMM yyyy',
-              'id_ID',
-            ).format(d.usulTanggalLahir!),
+            label: 'Tahun Lahir',
+            value: '${d.usulTahunLahir ?? d.usulTanggalLahir!.year}',
           ),
-        if (d.usulTanggalWafat != null)
+        if ((d.usulTahunWafat ?? d.usulTanggalWafat?.year) != null)
           _InfoRow(
             icon: Icons.church_outlined,
-            label: 'Tanggal Wafat',
-            value: DateFormat(
-              'd MMMM yyyy',
-              'id_ID',
-            ).format(d.usulTanggalWafat!),
+            label: 'Tahun Wafat',
+            value: '${d.usulTahunWafat ?? d.usulTanggalWafat!.year}',
           ),
         if (d.usulSuamiNama != null)
           _InfoRow(

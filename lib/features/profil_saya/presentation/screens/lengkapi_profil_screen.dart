@@ -4,17 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../../shared/utils/orang_labels.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
-import '../../../../shared/widgets/lokasi_picker_screen.dart';
 import '../../../../shared/widgets/wilayah_picker_sheet.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/riwayat_form_sheet.dart';
 import '../../domain/entities/profil_saya.dart';
 import '../providers/profil_saya_provider.dart';
+import '../../../../shared/widgets/tahun_picker.dart';
 import '../widgets/kelengkapan_profil_card.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
@@ -32,7 +30,6 @@ class LengkapiProfilScreen extends ConsumerStatefulWidget {
 }
 
 class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
-  final _alamat = TextEditingController();
   final _telp = TextEditingController();
   final _email = TextEditingController();
   bool _terisi = false;
@@ -44,11 +41,9 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
   WilayahRef? _kabupaten;
   WilayahRef? _kecamatan;
   WilayahRef? _desa;
-  LatLng? _titik;
 
   @override
   void dispose() {
-    _alamat.dispose();
     _telp.dispose();
     _email.dispose();
     super.dispose();
@@ -59,17 +54,15 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
   void _isiDari(ProfilSaya p) {
     if (_terisi) return;
     _terisi = true;
-    _tanggalLahir = p.tanggalLahir;
+    _tanggalLahir = p.tahunLahir != null
+        ? DateTime(p.tahunLahir!)
+        : p.tanggalLahir;
     _provinsi = p.provinsi;
     _kabupaten = p.kabupaten;
     _kecamatan = p.kecamatan;
     _desa = p.desa;
-    _alamat.text = p.alamatJalan ?? '';
     _telp.text = p.noTelp ?? '';
     _email.text = p.emailKontak ?? '';
-    _titik = (p.latitude != null && p.longitude != null)
-        ? LatLng(p.latitude!, p.longitude!)
-        : null;
   }
 
   Future<void> _pilihFoto() async {
@@ -85,15 +78,13 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
   }
 
   Future<void> _pilihTanggal() async {
-    final sekarang = DateTime.now();
-    final hasil = await showDatePicker(
-      context: context,
-      initialDate: _tanggalLahir ?? DateTime(sekarang.year - 30),
-      firstDate: DateTime(1900),
-      lastDate: sekarang,
-      helpText: 'Tanggal lahir',
+    final hasil = await showTahunPicker(
+      context,
+      initial: _tanggalLahir?.year,
+      firstYear: 1900,
+      title: 'Tahun lahir',
     );
-    if (hasil != null) setState(() => _tanggalLahir = hasil);
+    if (hasil != null) setState(() => _tanggalLahir = DateTime(hasil));
   }
 
   Future<void> _pilihWilayah(String tingkat) async {
@@ -143,21 +134,12 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
     });
   }
 
-  Future<void> _pilihTitik() async {
-    final hasil = await Navigator.push<LatLng>(
-      context,
-      MaterialPageRoute(builder: (_) => LokasiPickerScreen(titikAwal: _titik)),
-    );
-    if (hasil != null) setState(() => _titik = hasil);
-  }
-
   Future<void> _simpan(ProfilSaya awal) async {
     final vals = <String, dynamic>{};
     if (_fotoBaru != null) vals['foto'] = base64Encode(_fotoBaru!);
-    if (_tanggalLahir != awal.tanggalLahir) {
-      vals['tanggal_lahir'] = _tanggalLahir == null
-          ? false
-          : DateFormat('yyyy-MM-dd').format(_tanggalLahir!);
+    final tahunAwal = awal.tahunLahir ?? awal.tanggalLahir?.year;
+    if (_tanggalLahir?.year != tahunAwal) {
+      vals['tahun_lahir'] = _tanggalLahir?.year ?? false;
     }
     final wilayahBerubah =
         _provinsi?.id != awal.provinsi?.id ||
@@ -172,22 +154,10 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
       vals['kecamatan_id'] = _kecamatan?.id ?? false;
       vals['desa_id'] = _desa?.id ?? false;
     }
-    final alamat = _alamat.text.trim();
-    if (alamat != (awal.alamatJalan ?? '')) vals['alamat_jalan'] = alamat;
     final telp = _telp.text.trim();
     if (telp != (awal.noTelp ?? '')) vals['no_telp'] = telp;
     final email = _email.text.trim();
     if (email != (awal.emailKontak ?? '')) vals['email_kontak'] = email;
-
-    // Titik rumah: dikirim berpasangan; menghapusnya mengirim keduanya false.
-    final titikAwal = (awal.latitude != null && awal.longitude != null)
-        ? LatLng(awal.latitude!, awal.longitude!)
-        : null;
-    if (_titik?.latitude != titikAwal?.latitude ||
-        _titik?.longitude != titikAwal?.longitude) {
-      vals['latitude'] = _titik?.latitude ?? false;
-      vals['longitude'] = _titik?.longitude ?? false;
-    }
 
     if (vals.isEmpty) {
       context.pop();
@@ -365,12 +335,10 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
         ),
         const SizedBox(height: 24),
 
-        const _Judul('Tanggal lahir'),
+        const _Judul('Tahun lahir'),
         _Baris(
           ikon: Icons.cake_outlined,
-          nilai: _tanggalLahir == null
-              ? null
-              : DateFormat('d MMMM yyyy', 'id_ID').format(_tanggalLahir!),
+          nilai: _tanggalLahir == null ? null : '${_tanggalLahir!.year}',
           kosong: 'Belum diisi',
           onTap: _pilihTanggal,
           onHapus: _tanggalLahir == null
@@ -378,7 +346,7 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
               : () => setState(() => _tanggalLahir = null),
         ),
         const _Catatan(
-          'Tanggal persisnya hanya terlihat oleh Anda dan pengurus. Anggota lain hanya melihat umur.',
+          'Hanya tahun yang disimpan. Tahun lahir hanya terlihat oleh Anda dan pengurus; anggota lain hanya melihat umur.',
         ),
         const SizedBox(height: 24),
 
@@ -439,34 +407,9 @@ class _LengkapiProfilScreenState extends ConsumerState<LengkapiProfilScreen> {
           onTap: () => _pilihWilayah('4'),
           onHapus: _desa == null ? null : () => _hapusWilayah('4'),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _alamat,
-          maxLines: 2,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Alamat lengkap (jalan, nomor, RT/RW)',
-            border: OutlineInputBorder(),
-          ),
-        ),
         const _Catatan(
-          'Wilayah dan alamat terlihat oleh sesama anggota terverifikasi.',
-        ),
-        const SizedBox(height: 16),
-        _Baris(
-          ikon: Icons.pin_drop_outlined,
-          label: 'Titik lokasi rumah',
-          nilai: _titik == null
-              ? null
-              : '${_titik!.latitude.toStringAsFixed(5)}, ${_titik!.longitude.toStringAsFixed(5)}',
-          kosong: 'Pilih di peta',
-          onTap: _pilihTitik,
-          onHapus: _titik == null ? null : () => setState(() => _titik = null),
-        ),
-        _Catatan(
-          p.berbagiLokasi
-              ? 'Titik ini sedang ditampilkan ke anggota lain di peta Kerabat Terdekat. Untuk mematikannya, ubah di layar Kerabat Terdekat.'
-              : 'Titik ini hanya terlihat oleh Anda dan pengurus. Baru tampil di peta Kerabat Terdekat bila Anda menyalakan berbagi lokasi.',
+          'Domisili bersifat opsional dan hanya sampai tingkat desa/kelurahan. '
+          'Wilayah terlihat oleh sesama anggota terverifikasi.',
         ),
         const SizedBox(height: 24),
 

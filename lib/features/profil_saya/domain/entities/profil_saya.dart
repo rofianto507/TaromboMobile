@@ -59,6 +59,8 @@ class ProfilSaya {
   final String jenisKelamin;
   final bool punyaFoto;
   final DateTime? tanggalLahir;
+  // Sumber utama sekarang; tanggalLahir hanya cadangan untuk server lama.
+  final int? tahunLahir;
   final WilayahRef? provinsi;
   final WilayahRef? kabupaten;
   final WilayahRef? kecamatan;
@@ -82,6 +84,7 @@ class ProfilSaya {
     required this.punyaFoto,
     required this.kelengkapan,
     this.tanggalLahir,
+    this.tahunLahir,
     this.provinsi,
     this.kabupaten,
     this.kecamatan,
@@ -101,6 +104,7 @@ class ProfilSaya {
     jenisKelamin: asOdooString(json['jenis_kelamin']) ?? 'L',
     punyaFoto: json['punya_foto'] == true,
     tanggalLahir: asOdooDate(json['tanggal_lahir']),
+    tahunLahir: json['tahun_lahir'] is int ? json['tahun_lahir'] as int : null,
     provinsi: WilayahRef.fromM2o(json['provinsi_id']),
     kabupaten: WilayahRef.fromM2o(json['kabupaten_id']),
     kecamatan: WilayahRef.fromM2o(json['kecamatan_id']),
