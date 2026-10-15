@@ -23,7 +23,9 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
   final _ctrl = TextEditingController();
   List<Map<String, dynamic>> _results = [];
   bool _loading = false;
-  bool _submitting = false;
+  // id orang yang sedang dikirim; spinner hanya tampil di baris ini.
+  int? _mengirimId;
+  bool get _submitting => _mengirimId != null;
   String? _error;
 
   final _debounce = Debouncer(kJedaCari);
@@ -55,11 +57,11 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
           await api.callKw(
                 model: 'tarombo.orang',
                 method: 'search_read',
-                // Hanya orang yang belum ditautkan akun siapa pun — aman dievaluasi
-                // anggota biasa karena user_id sengaja tidak dibatasi groups=.
+                // Semua anggota ditampilkan, termasuk yang sudah tertaut ke akun
+                // lain (lencana terverifikasi). Yang sudah tertaut hanya bisa
+                // diajukan banding, bukan klaim biasa.
                 args: [
                   [
-                    ['user_id', '=', false],
                     ['name', 'ilike', q.trim()],
                   ],
                 ],
@@ -80,6 +82,66 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
     }
   }
 
+  /// Banding atas orang yang sudah tertaut ke akun lain. Alasan wajib diisi;
+  /// pengurus memeriksa lalu memutuskan.
+  Future<void> _banding(Map<String, dynamic> orang) async {
+    // Teks alasan dipegang ValueNotifier ringan; TextEditingController-nya
+    // dimiliki dan dibuang oleh widget isian itu sendiri. Membuang controller
+    // dari sini (saat dialog masih animasi tutup) memicu assertion
+    // "_dependents.isEmpty" karena TextField masih memakainya.
+    final teksAlasan = ValueNotifier<String>('');
+    String? alasan;
+    while (alasan == null) {
+      final ok = await showAppConfirmDialog(
+        context,
+        title: 'Ajukan Banding',
+        icon: Icons.gavel_rounded,
+        confirmLabel: 'Kirim Banding',
+        content: _IsianAlasanBanding(
+          nama: orang['name'] as String,
+          teks: teksAlasan,
+        ),
+      );
+      if (!ok) return;
+      final teks = teksAlasan.value.trim();
+      if (teks.length >= 10) {
+        alasan = teks;
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Alasan banding wajib diisi (minimal 10 huruf).'),
+          ),
+        );
+      }
+    }
+
+    setState(() => _mengirimId = orang['id'] as int);
+    try {
+      await ref
+          .read(klaimNotifierProvider.notifier)
+          .ajukanBanding(orangId: orang['id'] as int, alasan: alasan);
+      _keStatus('Banding terkirim. Pengurus akan memeriksanya.');
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is ServerException
+          ? e.message
+          : 'Gagal mengirim banding. Coba lagi.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      if (mounted) setState(() => _mengirimId = null);
+    }
+  }
+
+  /// Setelah pengajuan berhasil: konfirmasi singkat lalu pindah ke halaman
+  /// Status Klaim (router sengaja tidak memindahkan otomatis dari rute /klaim).
+  void _keStatus(String pesan) {
+    if (!mounted) return;
+    // Tutup keyboard dulu supaya halaman Status Klaim tidak tampil sempit.
+    FocusManager.instance.primaryFocus?.unfocus();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(pesan)));
+    context.go('/klaim/pending');
+  }
+
   Future<void> _klaim(Map<String, dynamic> orang) async {
     final confirm = await showAppConfirmDialog(
       context,
@@ -91,11 +153,12 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
     );
     if (!confirm) return;
 
-    setState(() => _submitting = true);
+    setState(() => _mengirimId = orang['id'] as int);
     try {
       await ref
           .read(klaimNotifierProvider.notifier)
           .ajukanOrangAda(orangId: orang['id'] as int);
+      _keStatus('Klaim terkirim. Pengurus akan memeriksanya.');
     } catch (e) {
       if (!mounted) return;
       final msg = e is ServerException
@@ -103,7 +166,7 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
           : 'Gagal mengirim klaim. Coba lagi.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) setState(() => _mengirimId = null);
     }
   }
 
@@ -212,9 +275,13 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (_, i) {
                       final o = _results[i];
+                      final tertaut = o['terhubung_akun'] == true;
                       return OrangListTile(
                         orang: o,
-                        trailing: _submitting
+                        keterangan: tertaut
+                            ? 'Sudah terhubung ke akun lain • ketuk untuk banding'
+                            : null,
+                        trailing: _mengirimId == o['id']
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
@@ -223,7 +290,9 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
                                 ),
                               )
                             : const Icon(Icons.chevron_right),
-                        onTap: _submitting ? null : () => _klaim(o),
+                        onTap: _submitting
+                            ? null
+                            : () => tertaut ? _banding(o) : _klaim(o),
                       );
                     },
                   ),
@@ -245,6 +314,58 @@ class _KlaimSearchScreenState extends ConsumerState<KlaimSearchScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Isian alasan banding di dalam dialog. Memiliki dan membuang
+/// TextEditingController-nya sendiri sehingga aman terhadap animasi tutup.
+class _IsianAlasanBanding extends StatefulWidget {
+  final String nama;
+  final ValueNotifier<String> teks;
+  const _IsianAlasanBanding({required this.nama, required this.teks});
+
+  @override
+  State<_IsianAlasanBanding> createState() => _IsianAlasanBandingState();
+}
+
+class _IsianAlasanBandingState extends State<_IsianAlasanBanding> {
+  late final TextEditingController _ctrl = TextEditingController(
+    text: widget.teks.value,
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '"${widget.nama}" sudah terhubung ke akun lain. Bila Anda adalah '
+          'orang ini dan akun tersebut keliru, jelaskan alasannya. Pengurus '
+          'akan memeriksa; bila disetujui, tautan akun lama dicabut dan nama '
+          'ini terhubung ke akun Anda.',
+          style: TextStyle(color: Colors.grey.shade700, height: 1.45),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _ctrl,
+          maxLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: (v) => widget.teks.value = v,
+          decoration: const InputDecoration(
+            hintText: 'Mis. saya anak dari ..., akun lain bukan milik saya',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ),
+      ],
     );
   }
 }

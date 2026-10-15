@@ -101,6 +101,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      // Masih ada pengajuan yang menunggu: halaman pencarian/orang baru
+      // dialihkan ke Status Klaim supaya tidak bisa mengajukan lagi (server
+      // juga menolak pengajuan kedua). Batal dulu lewat tombol di Status Klaim.
+      if (status == KlaimStatus.menunggu &&
+          isKlaimRoute &&
+          loc != '/klaim/pending') {
+        return '/klaim/pending';
+      }
+
       // Belum tertaut ke data anggota mana pun (belum/menunggu/ditolak).
       // Sebelumnya akun begini dikunci total ke layar klaim. Sekarang form
       // klaim cukup ditampilkan SEKALI per sesi aplikasi (ditandai lewat
