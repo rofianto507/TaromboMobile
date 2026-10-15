@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../shared/utils/orang_format.dart';
+import '../../../../shared/widgets/orang_avatar.dart';
 import '../../../../shared/widgets/orang_search_sheet.dart';
+import '../../../../shared/widgets/verified_badge.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../klaim/presentation/providers/klaim_provider.dart';
 import '../../domain/entities/partuturan_result.dart';
@@ -31,7 +33,13 @@ class _PartuturanScreenState extends ConsumerState<PartuturanScreen> {
     // pemakaian paling umum adalah "saya panggil apa ke si X".
     final myOrang = ref.read(klaimNotifierProvider).valueOrNull?.orang;
     if (myOrang != null) {
-      _orangA = {'id': myOrang.id, 'name': myOrang.name};
+      // Klaim sudah disetujui = akun ini terverifikasi.
+      _orangA = {
+        'id': myOrang.id,
+        'name': myOrang.name,
+        'sundut': myOrang.sundut,
+        'terhubung_akun': true,
+      };
     }
   }
 
@@ -195,10 +203,18 @@ class _PersonSlot extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundColor: _kGold.withValues(alpha: 0.15),
-              child: const Icon(Icons.person_rounded, color: _kGreen1),
-            ),
+            if (orang != null)
+              // Foto anggota yang dipilih (sama seperti di daftar pencarian).
+              OrangAvatar(
+                orangId: orang!['id'] as int,
+                jenisKelamin: (orang!['jenis_kelamin'] as String?) ?? 'L',
+                radius: 20,
+              )
+            else
+              CircleAvatar(
+                backgroundColor: _kGold.withValues(alpha: 0.15),
+                child: const Icon(Icons.person_rounded, color: _kGreen1),
+              ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -208,8 +224,9 @@ class _PersonSlot extends StatelessWidget {
                     label,
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
-                  Text(
-                    orang?['name'] as String? ?? 'Ketuk untuk memilih',
+                  OrangNama(
+                    nama: orang?['name'] as String? ?? 'Ketuk untuk memilih',
+                    terverifikasi: orang?['terhubung_akun'] == true,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: orang != null ? _kGreen1 : Colors.grey.shade500,
@@ -324,6 +341,7 @@ class _SebutanChip extends StatelessWidget {
           nama,
           style: const TextStyle(color: Colors.white70, fontSize: 12),
           textAlign: TextAlign.center,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 4),
