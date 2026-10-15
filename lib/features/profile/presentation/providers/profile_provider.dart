@@ -183,18 +183,15 @@ final profileDetailProvider = FutureProvider.autoDispose.family<ProfileDetail, i
           method: 'search_read',
           args: [
             [
-              ['orang_id', '=', orangId],
+              [
+                'orang_ids',
+                'in',
+                [orangId],
+              ],
             ],
           ],
           kwargs: {
-            'fields': [
-              'id',
-              'name',
-              'jenis',
-              'orang_id',
-              'punguan_id',
-              'tahun_perkiraan',
-            ],
+            'fields': ['id', 'name', 'jenis', 'orang_ids', 'tahun_perkiraan'],
           },
         )
         .then((r) => (r as List).cast<Map<String, dynamic>>()),

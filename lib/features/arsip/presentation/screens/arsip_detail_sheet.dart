@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../../shared/utils/arsip_labels.dart';
@@ -12,7 +13,7 @@ import '../providers/arsip_provider.dart';
 import '../../domain/entities/arsip_item.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold   = Color(0xFFC8A24A);
+const _kGold = Color(0xFFC8A24A);
 
 /// Mengembalikan true bila arsip dihapus dari dalam sheet ini, supaya pemanggil
 /// memuat ulang daftarnya.
@@ -54,23 +55,41 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
     });
     try {
       final api = ref.read(apiClientProvider);
-      final rows = await api.callKw(
-        model: 'tarombo.arsip',
-        method: 'search_read',
-        args: [
-          [
-            ['id', '=', widget.arsipId]
-          ]
-        ],
-        kwargs: {
-          'fields': ['id', 'name', 'jenis', 'orang_id', 'punguan_id', 'tahun_perkiraan', 'sumber', 'keterangan', 'berkas_nama', 'create_uid'],
-        },
-      ) as List;
+      final rows =
+          await api.callKw(
+                model: 'tarombo.arsip',
+                method: 'search_read',
+                args: [
+                  [
+                    ['id', '=', widget.arsipId],
+                  ],
+                ],
+                kwargs: {
+                  'fields': [
+                    'id',
+                    'name',
+                    'jenis',
+                    'orang_ids',
+                    'tahun_perkiraan',
+                    'sumber',
+                    'keterangan',
+                    'berkas_nama',
+                    'create_uid',
+                  ],
+                },
+              )
+              as List;
       if (rows.isEmpty) {
         setState(() => _error = 'Arsip tidak ditemukan.');
         return;
       }
-      setState(() => _item = ArsipItem.fromJson((rows.first as Map).cast<String, dynamic>()));
+      final dasar = ArsipItem.fromJson(
+        (rows.first as Map).cast<String, dynamic>(),
+      );
+      final lengkap = (await ref.read(arsipRepositoryProvider).isiNamaOrang([
+        dasar,
+      ])).first;
+      setState(() => _item = lengkap);
     } catch (_) {
       setState(() => _error = 'Gagal memuat data. Periksa koneksi Anda.');
     } finally {
@@ -93,13 +112,19 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
       final result = await OpenFilex.open(file.path);
       if (result.type != ResultType.done && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tidak ada aplikasi untuk membuka berkas ini (${result.message}).')),
+          SnackBar(
+            content: Text(
+              'Tidak ada aplikasi untuk membuka berkas ini (${result.message}).',
+            ),
+          ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mengunduh berkas. Periksa koneksi Anda.')),
+          const SnackBar(
+            content: Text('Gagal mengunduh berkas. Periksa koneksi Anda.'),
+          ),
         );
       }
     } finally {
@@ -146,13 +171,20 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
           child: Column(
             children: [
               const SizedBox(height: 10),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
-                        ? Center(child: Text(_error!, textAlign: TextAlign.center))
-                        : _buildContent(_item!, scrollController),
+                    ? Center(child: Text(_error!, textAlign: TextAlign.center))
+                    : _buildContent(_item!, scrollController),
               ),
             ],
           ),
@@ -174,36 +206,95 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
           borderRadius: BorderRadius.circular(16),
         ),
         const SizedBox(height: 20),
-        Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _kGreen1)),
+        Text(
+          item.name,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: _kGreen1,
+          ),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _Badge(icon: jenisArsipIcon(item.jenis), text: jenisArsipLabel(item.jenis)),
-            if (item.punguan != null) _Badge(icon: Icons.groups_outlined, text: item.punguan!),
+            _Badge(
+              icon: jenisArsipIcon(item.jenis),
+              text: jenisArsipLabel(item.jenis),
+            ),
             if (item.tahunPerkiraan != null && item.tahunPerkiraan!.isNotEmpty)
-              _Badge(icon: Icons.calendar_today_outlined, text: item.tahunPerkiraan!),
+              _Badge(
+                icon: Icons.calendar_today_outlined,
+                text: item.tahunPerkiraan!,
+              ),
           ],
         ),
         const SizedBox(height: 20),
-        if (item.orangName != null) _InfoRow(icon: Icons.person_outline_rounded, label: 'Terkait', value: item.orangName!),
-        if (item.sumber != null && item.sumber!.isNotEmpty) _InfoRow(icon: Icons.source_outlined, label: 'Sumber', value: item.sumber!),
+        if (item.orang.isNotEmpty) ...[
+          const Text(
+            'Orang terkait',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _kGreen1),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final o in item.orang)
+                ActionChip(
+                  avatar: const Icon(
+                    Icons.person_outline_rounded,
+                    size: 18,
+                    color: _kGreen1,
+                  ),
+                  label: Text(o.name.isEmpty ? 'Anggota' : o.name),
+                  backgroundColor: const Color(0x1FC8A24A),
+                  side: BorderSide.none,
+                  onPressed: () {
+                    final router = GoRouter.of(context);
+                    Navigator.of(context).pop();
+                    router.push('/profil/${o.id}');
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (item.sumber != null && item.sumber!.isNotEmpty)
+          _InfoRow(
+            icon: Icons.source_outlined,
+            label: 'Sumber',
+            value: item.sumber!,
+          ),
         if (item.keterangan != null && item.keterangan!.isNotEmpty) ...[
           const SizedBox(height: 10),
-          const Text('Keterangan', style: TextStyle(fontWeight: FontWeight.w700, color: _kGreen1)),
+          const Text(
+            'Keterangan',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _kGreen1),
+          ),
           const SizedBox(height: 6),
-          Text(item.keterangan!, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
+          Text(
+            item.keterangan!,
+            style: TextStyle(color: Colors.grey.shade700, height: 1.5),
+          ),
         ],
         const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
           height: 50,
           child: FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: _kGold, foregroundColor: _kGreen1),
+            style: FilledButton.styleFrom(
+              backgroundColor: _kGold,
+              foregroundColor: _kGreen1,
+            ),
             onPressed: _opening ? null : _bukaBerkas,
             icon: _opening
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  )
                 : const Icon(Icons.file_open_outlined),
             label: Text(_opening ? 'Mengunduh...' : 'Buka Berkas'),
           ),
@@ -211,7 +302,8 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
         // Hanya pengunggah arsip (bukan arsip unggahan pengurus) yang boleh menghapus;
         // ir.rule backend juga menegakkan hal yang sama.
         if (item.createUid != null &&
-            item.createUid == ref.watch(authNotifierProvider).valueOrNull?.id) ...[
+            item.createUid ==
+                ref.watch(authNotifierProvider).valueOrNull?.id) ...[
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -223,7 +315,11 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
               ),
               onPressed: _deleting ? null : _hapus,
               icon: _deleting
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5))
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
                   : const Icon(Icons.delete_outline_rounded),
               label: Text(_deleting ? 'Menghapus...' : 'Hapus Arsip'),
             ),
@@ -238,7 +334,11 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   // Sama seperti sheet detail Usulan — lebar label tetap supaya titik dua &
   // value sejajar antar baris.
@@ -255,11 +355,28 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 10),
           SizedBox(
             width: _lebarLabel,
-            child: Text(label, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          const Text(': ', style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w600)),
+          const Text(
+            ': ',
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.grey.shade800, fontSize: 14)),
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.grey.shade800, fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -276,13 +393,23 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: _kGold.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: _kGold.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: _kGreen1),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(fontSize: 12, color: _kGreen1, fontWeight: FontWeight.w600)),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              color: _kGreen1,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

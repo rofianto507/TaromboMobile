@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/utils/arsip_labels.dart';
+import '../../../../shared/widgets/orang_search_sheet.dart';
 import '../providers/arsip_provider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
@@ -62,6 +63,8 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
   final _sumber = TextEditingController();
   final _keterangan = TextEditingController();
   PlatformFile? _berkas;
+  // Anggota lain yang ikut ditautkan; profil sendiri selalu ikut dan tidak bisa dilepas.
+  final List<Map<String, dynamic>> _terkait = [];
   String _jenis = 'dokumen';
   bool _publik = true;
   bool _saving = false;
@@ -99,6 +102,18 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
     });
   }
 
+  Future<void> _tambahTerkait() async {
+    final dipilih = await showOrangSearchSheet(
+      context,
+      ref,
+      title: 'Tautkan Anggota',
+    );
+    if (dipilih == null) return;
+    final id = dipilih['id'] as int;
+    if (id == widget.orangId || _terkait.any((o) => o['id'] == id)) return;
+    setState(() => _terkait.add(dipilih));
+  }
+
   Future<void> _simpan() async {
     if (_berkas == null) {
       setState(() => _errorBerkas = 'Pilih berkas terlebih dahulu.');
@@ -107,17 +122,20 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await ref.read(arsipRepositoryProvider).tambah(
-        orangId: widget.orangId,
-        nama: _nama.text.trim(),
-        jenis: _jenis,
-        berkasBase64: base64Encode(_berkas!.bytes!),
-        berkasNama: _berkas!.name,
-        tahunPerkiraan: _tahun.text.trim(),
-        sumber: _sumber.text.trim(),
-        keterangan: _keterangan.text.trim(),
-        publik: _publik,
-      );
+      await ref
+          .read(arsipRepositoryProvider)
+          .tambah(
+            orangId: widget.orangId,
+            orangIds: [for (final o in _terkait) o['id'] as int],
+            nama: _nama.text.trim(),
+            jenis: _jenis,
+            berkasBase64: base64Encode(_berkas!.bytes!),
+            berkasNama: _berkas!.name,
+            tahunPerkiraan: _tahun.text.trim(),
+            sumber: _sumber.text.trim(),
+            keterangan: _keterangan.text.trim(),
+            publik: _publik,
+          );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -192,9 +210,8 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
                 controller: _nama,
                 decoration: _dec('Nama arsip *'),
                 textCapitalization: TextCapitalization.sentences,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Nama wajib diisi'
-                    : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Nama wajib diisi' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -220,6 +237,38 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
                 decoration: _dec('Keterangan'),
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Orang terkait',
+                style: TextStyle(fontWeight: FontWeight.w700, color: _kGreen1),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  const Chip(
+                    avatar: Icon(
+                      Icons.person_rounded,
+                      size: 18,
+                      color: _kGreen1,
+                    ),
+                    label: Text('Profil Anda'),
+                  ),
+                  for (final o in _terkait)
+                    InputChip(
+                      label: Text(o['name'] as String),
+                      onDeleted: _saving
+                          ? null
+                          : () => setState(() => _terkait.remove(o)),
+                    ),
+                  ActionChip(
+                    avatar: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Tautkan anggota'),
+                    onPressed: _saving ? null : _tambahTerkait,
+                  ),
+                ],
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
