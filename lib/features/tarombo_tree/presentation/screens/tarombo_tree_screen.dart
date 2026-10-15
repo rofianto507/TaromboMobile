@@ -7,6 +7,9 @@ import 'package:graphview/graphview.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/notifikasi_button.dart';
+import '../../../../shared/utils/debouncer.dart';
+import '../../../../shared/utils/orang_format.dart';
+import '../../../../shared/widgets/orang_list_tile.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/pohon_node.dart';
 import '../providers/pohon_provider.dart';
@@ -616,14 +619,26 @@ class _PencarianFokusSheet extends ConsumerStatefulWidget {
 
 class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
   final _ctrl = TextEditingController();
+  final _debounce = Debouncer(kJedaCari);
   List<Map<String, dynamic>> _hasil = [];
   bool _loading = false;
+  int _seq = 0;
 
-  Future<void> _cari(String q) async {
-    if (q.trim().length < 2) {
-      setState(() => _hasil = []);
+  void _onChanged(String q) {
+    if (q.trim().length < kMinHurufCari) {
+      _debounce.cancel();
+      _seq++;
+      setState(() {
+        _hasil = [];
+        _loading = false;
+      });
       return;
     }
+    _debounce.run(() => _cari(q));
+  }
+
+  Future<void> _cari(String q) async {
+    final saya = ++_seq;
     setState(() => _loading = true);
     try {
       final api = ref.read(apiClientProvider);
@@ -637,22 +652,25 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
                   ],
                 ],
                 kwargs: {
-                  'fields': ['id', 'name', 'sundut', 'jenis_kelamin'],
+                  'fields': kOrangSearchFields,
                   'limit': 20,
                   'order': 'name',
                 },
               )
               as List;
-      if (mounted) setState(() => _hasil = rows.cast<Map<String, dynamic>>());
+      if (mounted && saya == _seq) {
+        setState(() => _hasil = rows.cast<Map<String, dynamic>>());
+      }
     } catch (_) {
-      if (mounted) setState(() => _hasil = []);
+      if (mounted && saya == _seq) setState(() => _hasil = []);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && saya == _seq) setState(() => _loading = false);
     }
   }
 
   @override
   void dispose() {
+    _debounce.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -672,7 +690,7 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
               child: TextField(
                 controller: _ctrl,
                 autofocus: true,
-                onChanged: _cari,
+                onChanged: _onChanged,
                 decoration: InputDecoration(
                   hintText: 'Ketik nama orang...',
                   prefixIcon: const Icon(Icons.search, color: _kGold),
@@ -691,7 +709,7 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
                   : _hasil.isEmpty
                   ? Center(
                       child: Text(
-                        _ctrl.text.trim().length < 2
+                        _ctrl.text.trim().length < kMinHurufCari
                             ? 'Ketik minimal 2 huruf untuk mencari.'
                             : 'Tidak ditemukan.',
                         style: const TextStyle(color: Colors.grey),
@@ -702,18 +720,8 @@ class _PencarianFokusSheetState extends ConsumerState<_PencarianFokusSheet> {
                       separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (_, i) {
                         final o = _hasil[i];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: _kGold.withValues(alpha: 0.15),
-                            child: Icon(
-                              o['jenis_kelamin'] == 'P'
-                                  ? Icons.woman_rounded
-                                  : Icons.man_rounded,
-                              color: _kGreen1,
-                            ),
-                          ),
-                          title: Text(o['name'] as String),
-                          subtitle: Text('Sundut ${o['sundut']}'),
+                        return OrangListTile(
+                          orang: o,
                           onTap: () => Navigator.pop(context, o['id'] as int),
                         );
                       },

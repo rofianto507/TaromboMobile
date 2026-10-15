@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../shared/widgets/orang_avatar.dart';
-import '../../../../shared/utils/odoo_json.dart';
-import '../../../../shared/utils/orang_labels.dart';
+import '../../../../shared/utils/debouncer.dart';
+import '../../../../shared/utils/orang_format.dart';
+import '../../../../shared/widgets/orang_list_tile.dart';
 
 const _kGold = Color(0xFFC8A24A);
 
@@ -18,15 +18,28 @@ class ProfileSearchScreen extends ConsumerStatefulWidget {
 
 class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
   final _ctrl = TextEditingController();
+  final _debounce = Debouncer(kJedaCari);
   List<Map<String, dynamic>> _results = [];
   bool _loading = false;
   String? _error;
+  int _seq = 0;
 
-  Future<void> _search(String q) async {
-    if (q.trim().length < 2) {
-      setState(() => _results = []);
+  void _onChanged(String q) {
+    if (q.trim().length < kMinHurufCari) {
+      _debounce.cancel();
+      _seq++;
+      setState(() {
+        _results = [];
+        _loading = false;
+        _error = null;
+      });
       return;
     }
+    _debounce.run(() => _search(q));
+  }
+
+  Future<void> _search(String q) async {
+    final saya = ++_seq;
     setState(() {
       _loading = true;
       _error = null;
@@ -43,29 +56,25 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
                   ],
                 ],
                 kwargs: {
-                  'fields': [
-                    'id',
-                    'name',
-                    'sundut',
-                    'jenis_kelamin',
-                    'punguan_id',
-                    'status',
-                  ],
+                  'fields': kOrangSearchFields,
                   'limit': 30,
                   'order': 'name',
                 },
               )
               as List;
+      if (!mounted || saya != _seq) return;
       setState(() => _results = rows.cast<Map<String, dynamic>>());
     } catch (_) {
+      if (!mounted || saya != _seq) return;
       setState(() => _error = 'Gagal memuat data. Periksa koneksi Anda.');
     } finally {
-      setState(() => _loading = false);
+      if (mounted && saya == _seq) setState(() => _loading = false);
     }
   }
 
   @override
   void dispose() {
+    _debounce.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -82,7 +91,7 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
               controller: _ctrl,
               autofocus: true,
               textInputAction: TextInputAction.search,
-              onChanged: _search,
+              onChanged: _onChanged,
               decoration: InputDecoration(
                 hintText: 'Cari nama anggota keluarga...',
                 prefixIcon: const Icon(Icons.search, color: _kGold),
@@ -104,7 +113,7 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
                       style: TextStyle(color: Colors.red.shade700),
                     ),
                   )
-                : _ctrl.text.trim().length < 2
+                : _ctrl.text.trim().length < kMinHurufCari
                 ? const Center(
                     child: Text(
                       'Ketik minimal 2 huruf untuk mencari.',
@@ -123,16 +132,8 @@ class _ProfileSearchScreenState extends ConsumerState<ProfileSearchScreen> {
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (_, i) {
                       final o = _results[i];
-                      return ListTile(
-                        leading: OrangAvatar(
-                          orangId: o['id'] as int,
-                          jenisKelamin: o['jenis_kelamin'] as String,
-                          radius: 20,
-                        ),
-                        title: Text(o['name'] as String),
-                        subtitle: Text(
-                          'Sundut ${o['sundut']} • ${statusLabel(asOdooString(o['status']))}',
-                        ),
+                      return OrangListTile(
+                        orang: o,
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/profil/${o['id']}'),
                       );

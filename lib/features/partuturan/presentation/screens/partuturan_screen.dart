@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../shared/utils/orang_format.dart';
 import '../../../../shared/widgets/orang_search_sheet.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../klaim/presentation/providers/klaim_provider.dart';
 import '../../domain/entities/partuturan_result.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold   = Color(0xFFC8A24A);
+const _kGold = Color(0xFFC8A24A);
 
 class PartuturanScreen extends ConsumerStatefulWidget {
   const PartuturanScreen({super.key});
@@ -35,7 +36,11 @@ class _PartuturanScreenState extends ConsumerState<PartuturanScreen> {
   }
 
   Future<void> _pick(bool isA) async {
-    final result = await showOrangSearchSheet(context, ref, title: isA ? 'Pilih Orang Pertama' : 'Pilih Orang Kedua');
+    final result = await showOrangSearchSheet(
+      context,
+      ref,
+      title: isA ? 'Pilih Orang Pertama' : 'Pilih Orang Kedua',
+    );
     if (result == null) return;
     setState(() {
       if (isA) {
@@ -71,9 +76,17 @@ class _PartuturanScreenState extends ConsumerState<PartuturanScreen> {
         method: 'hitung_partuturan_mobile',
         args: [_orangA!['id'], _orangB!['id']],
       );
-      setState(() => _result = PartuturanResult.fromJson((json as Map).cast<String, dynamic>()));
+      setState(
+        () => _result = PartuturanResult.fromJson(
+          (json as Map).cast<String, dynamic>(),
+        ),
+      );
     } catch (e) {
-      setState(() => _error = e is ServerException ? e.message : 'Gagal menghitung. Periksa koneksi Anda.');
+      setState(
+        () => _error = e is ServerException
+            ? e.message
+            : 'Gagal menghitung. Periksa koneksi Anda.',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -91,7 +104,11 @@ class _PartuturanScreenState extends ConsumerState<PartuturanScreen> {
             style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
           ),
           const SizedBox(height: 20),
-          _PersonSlot(label: 'Orang Pertama', orang: _orangA, onTap: () => _pick(true)),
+          _PersonSlot(
+            label: 'Orang Pertama',
+            orang: _orangA,
+            onTap: () => _pick(true),
+          ),
           Center(
             child: IconButton(
               onPressed: (_orangA != null || _orangB != null) ? _swap : null,
@@ -99,28 +116,55 @@ class _PartuturanScreenState extends ConsumerState<PartuturanScreen> {
               tooltip: 'Tukar',
             ),
           ),
-          _PersonSlot(label: 'Orang Kedua', orang: _orangB, onTap: () => _pick(false)),
+          _PersonSlot(
+            label: 'Orang Kedua',
+            orang: _orangB,
+            onTap: () => _pick(false),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 50,
             child: FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _kGold, foregroundColor: _kGreen1),
-              onPressed: (_orangA != null && _orangB != null && !_loading) ? _hitung : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: _kGold,
+                foregroundColor: _kGreen1,
+              ),
+              onPressed: (_orangA != null && _orangB != null && !_loading)
+                  ? _hitung
+                  : null,
               child: _loading
-                  ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
-                  : const Text('Hitung Partuturan', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : const Text(
+                      'Hitung Partuturan',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
             ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
-              child: Text(_error!, style: TextStyle(color: Colors.red.shade700)),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Colors.red.shade700),
+              ),
             ),
           ],
-          if (_result != null) _ResultCard(result: _result!, namaA: _orangA!['name'] as String, namaB: _orangB!['name'] as String),
+          if (_result != null)
+            _ResultCard(
+              result: _result!,
+              namaA: _orangA!['name'] as String,
+              namaB: _orangB!['name'] as String,
+            ),
         ],
       ),
     );
@@ -131,7 +175,11 @@ class _PersonSlot extends StatelessWidget {
   final String label;
   final Map<String, dynamic>? orang;
   final VoidCallback onTap;
-  const _PersonSlot({required this.label, required this.orang, required this.onTap});
+  const _PersonSlot({
+    required this.label,
+    required this.orang,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -147,17 +195,34 @@ class _PersonSlot extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(backgroundColor: _kGold.withValues(alpha: 0.15), child: const Icon(Icons.person_rounded, color: _kGreen1)),
+            CircleAvatar(
+              backgroundColor: _kGold.withValues(alpha: 0.15),
+              child: const Icon(Icons.person_rounded, color: _kGreen1),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                  Text(
+                    label,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
                   Text(
                     orang?['name'] as String? ?? 'Ketuk untuk memilih',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: orang != null ? _kGreen1 : Colors.grey.shade500),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: orang != null ? _kGreen1 : Colors.grey.shade500,
+                    ),
                   ),
+                  if (orang != null && subtitleOrang(orang!).isNotEmpty)
+                    Text(
+                      subtitleOrang(orang!),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -173,37 +238,69 @@ class _ResultCard extends StatelessWidget {
   final PartuturanResult result;
   final String namaA;
   final String namaB;
-  const _ResultCard({required this.result, required this.namaA, required this.namaB});
+  const _ResultCard({
+    required this.result,
+    required this.namaA,
+    required this.namaB,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: _kGreen1, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: _kGreen1,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Expanded(child: _SebutanChip(nama: namaA, sebutan: result.sebutanA)),
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.compare_arrows_rounded, color: Colors.white70)),
-              Expanded(child: _SebutanChip(nama: namaB, sebutan: result.sebutanB)),
+              Expanded(
+                child: _SebutanChip(nama: namaA, sebutan: result.sebutanA),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.compare_arrows_rounded,
+                  color: Colors.white70,
+                ),
+              ),
+              Expanded(
+                child: _SebutanChip(nama: namaB, sebutan: result.sebutanB),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             result.keterangan,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, height: 1.6),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 13,
+              height: 1.6,
+            ),
           ),
           if (result.ancName != null) ...[
             const Divider(color: Colors.white24, height: 28),
             Row(
               children: [
-                const Icon(Icons.account_tree_outlined, color: _kGold, size: 18),
+                const Icon(
+                  Icons.account_tree_outlined,
+                  color: _kGold,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Leluhur bersama: ${result.ancName}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    'Leluhur bersama: ${result.ancName}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -223,12 +320,21 @@ class _SebutanChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(nama, style: const TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
+        Text(
+          nama,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+        ),
         const SizedBox(height: 4),
         Text(
           sebutan,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: _kGold, fontSize: 18, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            color: _kGold,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ],
     );
