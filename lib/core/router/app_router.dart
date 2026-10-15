@@ -22,6 +22,8 @@ import '../../features/usulan/presentation/screens/usulan_list_screen.dart';
 import '../../features/usulan/presentation/screens/usulan_form_screen.dart';
 import '../../features/direktori_keahlian/presentation/screens/direktori_keahlian_screen.dart';
 import '../../features/nearby_map/presentation/screens/nearby_map_screen.dart';
+import '../../features/berita/presentation/screens/berita_list_screen.dart';
+import '../../features/berita/presentation/screens/berita_detail_screen.dart';
 import '../../features/arsip/presentation/screens/arsip_list_screen.dart';
 import '../../features/splash/splash_screen.dart';
 import '../network/session_expired_notifier.dart';
@@ -273,6 +275,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'arsip',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, _) => const ArsipListScreen(),
+      ),
+      GoRoute(
+        path: '/berita',
+        name: 'berita',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const BeritaListScreen(),
+      ),
+      GoRoute(
+        path: '/berita/:id',
+        name: 'beritaDetail',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, state) => BeritaDetailScreen(
+          beritaId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );

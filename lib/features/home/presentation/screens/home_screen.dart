@@ -9,6 +9,7 @@ import '../../../profil_saya/presentation/providers/profil_saya_provider.dart';
 import '../../../profil_saya/presentation/widgets/kelengkapan_profil_card.dart';
 import '../../../../shared/widgets/notifikasi_button.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
+import '../../../berita/presentation/widgets/berita_slider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold = Color(0xFFC8A24A);
@@ -16,7 +17,7 @@ const _kGold = Color(0xFFC8A24A);
 // Seberapa jauh grid menu "naik" menimpa bagian bawah header hijau — sengaja
 // sampai separuh tinggi tile baris atas (Profil Keluarga/Hitung Partuturan),
 // bukan cuma sliver tipis di tepi.
-const _kOverlapTinggi = 105.0;
+const _kOverlapTinggi = 52.0;
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -73,12 +74,14 @@ class HomeScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                 child: GridView.count(
-                  crossAxisCount: 2,
+                  // Tiga kolom: tile lebih pendek supaya area Berita & Agenda
+                  // di bawahnya terlihat tanpa harus menggulir jauh.
+                  crossAxisCount: 3,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 1.02,
                   children: [
                     _MenuTile(
                       icon: Icons.family_restroom_rounded,
@@ -122,6 +125,7 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const BeritaSlider(),
               if (kelengkapan != null && !kelengkapan.lengkap)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -334,7 +338,7 @@ class _MenuTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             child: Stack(
               children: [
                 Column(
@@ -342,15 +346,16 @@ class _MenuTile extends StatelessWidget {
                   children: [
                     Icon(
                       icon,
-                      size: 32,
+                      size: 28,
                       color: locked ? Colors.grey.shade400 : _kGreen1,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       label,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
+                        height: 1.2,
                         fontWeight: FontWeight.w600,
                         color: locked ? Colors.grey.shade500 : null,
                       ),

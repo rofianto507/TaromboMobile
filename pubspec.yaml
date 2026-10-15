@@ -1,7 +1,7 @@
 name: tarombo_mobile
 description: "Tarombo Mobile - Aplikasi silsilah keluarga marga Silaen untuk anggota."
 publish_to: 'none'
-version: 1.0.4+5
+version: 1.0.5+6
 
 environment:
   sdk: ^3.12.2
@@ -59,6 +59,7 @@ dependencies:
   firebase_messaging: ^15.1.6
   flutter_local_notifications: ^18.0.1
   file_picker: ">=10.3.1 <11.0.0"
+  flutter_html: ^3.0.0
 
 dev_dependencies:
   flutter_test:
