@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
@@ -38,9 +40,50 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(teks)));
   }
 
+  Future<void> _bukaAturan() async {
+    await launchUrl(
+      Uri.parse('${AppConfig.baseUrl}/aturan-komentar'),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  /// Persetujuan Aturan Komentar, sekali saja sebelum komentar pertama.
+  Future<bool> _setujuAturan() async {
+    final prefs = ref.read(komentarPrefsProvider);
+    if (await prefs.aturanDiterima()) return true;
+    if (!mounted) return false;
+    final ya = await showAppConfirmDialog(
+      context,
+      title: 'Aturan Komentar',
+      icon: Icons.rule_rounded,
+      confirmLabel: 'Setuju dan Lanjut',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Gunakan bahasa yang sopan. Dilarang kata kasar, hinaan, '
+            'ujaran kebencian atau SARA, spam, membuka data pribadi orang '
+            'lain, serta konten yang membahayakan anak. Komentar yang '
+            'melanggar dapat dilaporkan dan dihapus pengurus.',
+            style: TextStyle(color: Colors.grey.shade700, height: 1.45),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _bukaAturan,
+            child: const Text('Baca aturan lengkap'),
+          ),
+        ],
+      ),
+    );
+    if (ya) await prefs.terimaAturan();
+    return ya;
+  }
+
   Future<void> _kirim() async {
     final teks = _ctrl.text.trim();
     if (teks.isEmpty || _mengirim) return;
+    if (!await _setujuAturan()) return;
     setState(() => _mengirim = true);
     try {
       await ref.read(beritaAksiProvider).kirimKomentar(widget.beritaId, teks);
@@ -74,9 +117,44 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
     }
   }
 
+  Future<void> _laporkan(KomentarBerita k) async {
+    final hasil = await showModalBottomSheet<(String, String?)>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const _LembarLaporan(),
+    );
+    if (hasil == null) return;
+    try {
+      await ref
+          .read(beritaAksiProvider)
+          .laporkanKomentar(k.id, hasil.$1, catatan: hasil.$2);
+      _pesan('Laporan terkirim. Pengurus akan meninjaunya.');
+    } catch (e) {
+      _pesan(e is ServerException ? e.message : 'Gagal mengirim laporan.');
+    }
+  }
+
+  Future<void> _blokir(KomentarBerita k) async {
+    final ya = await showAppConfirmDialog(
+      context,
+      title: 'Blokir ${k.penulis}?',
+      message:
+          'Komentar dari pengguna ini tidak akan ditampilkan di perangkat '
+          'Anda. Anda dapat membukanya kembali kapan saja.',
+      icon: Icons.block_rounded,
+      confirmLabel: 'Blokir',
+      destructive: true,
+    );
+    if (!ya || k.orangId == null) return;
+    await ref.read(komentarPrefsProvider).blokir(k.orangId!);
+    _pesan('Pengguna diblokir.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(beritaDetailProvider(widget.beritaId));
+    final blokir = ref.watch(blokirProvider).valueOrNull ?? const <int>{};
     final terverifikasi =
         ref.watch(klaimNotifierProvider).valueOrNull?.status ==
         KlaimStatus.disetujui;
@@ -94,8 +172,15 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
             ),
           ),
         ),
-        data: (d) =>
-            _Isi(detail: d, terverifikasi: terverifikasi, onHapus: _hapus),
+        data: (d) => _Isi(
+          detail: d,
+          terverifikasi: terverifikasi,
+          blokir: blokir,
+          onHapus: _hapus,
+          onLaporkan: _laporkan,
+          onBlokir: _blokir,
+          onBukaBlokir: () => ref.read(komentarPrefsProvider).bukaSemuaBlokir(),
+        ),
       ),
       bottomNavigationBar: async.hasValue
           ? SafeArea(
@@ -108,6 +193,7 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
                         controller: _ctrl,
                         mengirim: _mengirim,
                         onKirim: _kirim,
+                        onAturan: _bukaAturan,
                       )
                     : Container(
                         width: double.infinity,
@@ -132,16 +218,29 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
 class _Isi extends StatelessWidget {
   final BeritaDetail detail;
   final bool terverifikasi;
+  final Set<int> blokir;
   final void Function(KomentarBerita) onHapus;
+  final void Function(KomentarBerita) onLaporkan;
+  final void Function(KomentarBerita) onBlokir;
+  final VoidCallback onBukaBlokir;
   const _Isi({
     required this.detail,
     required this.terverifikasi,
+    required this.blokir,
     required this.onHapus,
+    required this.onLaporkan,
+    required this.onBlokir,
+    required this.onBukaBlokir,
   });
 
   @override
   Widget build(BuildContext context) {
     final b = detail.ringkas;
+    final tampil = [
+      for (final k in detail.komentar)
+        if (k.orangId == null || !blokir.contains(k.orangId)) k,
+    ];
+    final tersembunyi = detail.komentar.length - tampil.length;
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -226,18 +325,39 @@ class _Isi extends StatelessWidget {
               Divider(color: Colors.grey.shade300),
               const SizedBox(height: 8),
               Text(
-                'Komentar (${detail.komentar.length})',
+                'Komentar (${tampil.length})',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: _kGreen1,
                 ),
               ),
+              if (tersembunyi > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$tersembunyi komentar dari pengguna yang Anda blokir disembunyikan.',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: onBukaBlokir,
+                        child: const Text('Buka blokir'),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 10),
             ],
           ),
         ),
-        if (detail.komentar.isEmpty)
+        if (tampil.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
             child: Text(
@@ -248,8 +368,13 @@ class _Isi extends StatelessWidget {
             ),
           )
         else
-          for (final k in detail.komentar)
-            _ItemKomentar(komentar: k, onHapus: () => onHapus(k)),
+          for (final k in tampil)
+            _ItemKomentar(
+              komentar: k,
+              onHapus: () => onHapus(k),
+              onLaporkan: () => onLaporkan(k),
+              onBlokir: () => onBlokir(k),
+            ),
         const SizedBox(height: 24),
       ],
     );
@@ -282,16 +407,25 @@ class _BarisAgenda extends StatelessWidget {
   }
 }
 
+enum _AksiKomentar { hapus, laporkan, blokir }
+
 class _ItemKomentar extends StatelessWidget {
   final KomentarBerita komentar;
   final VoidCallback onHapus;
-  const _ItemKomentar({required this.komentar, required this.onHapus});
+  final VoidCallback onLaporkan;
+  final VoidCallback onBlokir;
+  const _ItemKomentar({
+    required this.komentar,
+    required this.onHapus,
+    required this.onLaporkan,
+    required this.onBlokir,
+  });
 
   @override
   Widget build(BuildContext context) {
     final k = komentar;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 12, 10),
+      padding: const EdgeInsets.fromLTRB(20, 6, 6, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -361,18 +495,154 @@ class _ItemKomentar extends StatelessWidget {
               ],
             ),
           ),
-          if (k.milikSendiri)
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip: 'Hapus komentar',
-              icon: Icon(
-                Icons.delete_outline_rounded,
-                size: 19,
-                color: Colors.grey.shade500,
-              ),
-              onPressed: onHapus,
+          // Menu: pemilik dapat menghapus; komentar orang lain dapat
+          // dilaporkan atau penulisnya diblokir.
+          PopupMenuButton<_AksiKomentar>(
+            tooltip: 'Opsi komentar',
+            icon: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: Colors.grey.shade500,
             ),
+            onSelected: (a) {
+              switch (a) {
+                case _AksiKomentar.hapus:
+                  onHapus();
+                case _AksiKomentar.laporkan:
+                  onLaporkan();
+                case _AksiKomentar.blokir:
+                  onBlokir();
+              }
+            },
+            itemBuilder: (_) => [
+              if (k.milikSendiri)
+                const PopupMenuItem(
+                  value: _AksiKomentar.hapus,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.delete_outline_rounded),
+                    title: Text('Hapus komentar'),
+                  ),
+                )
+              else ...[
+                const PopupMenuItem(
+                  value: _AksiKomentar.laporkan,
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.flag_outlined),
+                    title: Text('Laporkan komentar'),
+                  ),
+                ),
+                if (k.orangId != null)
+                  const PopupMenuItem(
+                    value: _AksiKomentar.blokir,
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.block_rounded),
+                      title: Text('Blokir pengguna'),
+                    ),
+                  ),
+              ],
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Lembar pilih alasan laporan. Mengembalikan (kodeAlasan, catatan).
+class _LembarLaporan extends StatefulWidget {
+  const _LembarLaporan();
+
+  @override
+  State<_LembarLaporan> createState() => _LembarLaporanState();
+}
+
+class _LembarLaporanState extends State<_LembarLaporan> {
+  String? _alasan;
+  final _catatan = TextEditingController();
+
+  @override
+  void dispose() {
+    _catatan.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Laporkan Komentar',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: _kGreen1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pilih alasan. Laporan Anda dikirim ke pengurus untuk ditinjau.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            RadioGroup<String>(
+              groupValue: _alasan,
+              onChanged: (v) => setState(() => _alasan = v),
+              child: Column(
+                children: [
+                  for (final (kode, label) in alasanLaporan)
+                    RadioListTile<String>(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: kode,
+                      title: Text(label),
+                    ),
+                ],
+              ),
+            ),
+            TextField(
+              controller: _catatan,
+              maxLines: 2,
+              maxLength: 500,
+              decoration: const InputDecoration(
+                labelText: 'Catatan (opsional)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: _alasan == null
+                  ? null
+                  : () => Navigator.of(context).pop((
+                      _alasan!,
+                      _catatan.text.trim().isEmpty
+                          ? null
+                          : _catatan.text.trim(),
+                    )),
+              style: FilledButton.styleFrom(
+                backgroundColor: _kGreen1,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('Kirim Laporan'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -382,10 +652,12 @@ class _InputKomentar extends StatelessWidget {
   final TextEditingController controller;
   final bool mengirim;
   final VoidCallback onKirim;
+  final VoidCallback onAturan;
   const _InputKomentar({
     required this.controller,
     required this.mengirim,
     required this.onKirim,
+    required this.onAturan,
   });
 
   @override
@@ -396,43 +668,63 @@ class _InputKomentar extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              minLines: 1,
-              maxLines: 4,
-              maxLength: 1000,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: 'Tulis komentar...',
-                counterText: '',
-                isDense: true,
-                filled: true,
-                fillColor: const Color(0xFFFAF9F5),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
-                  borderSide: BorderSide.none,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  maxLength: 1000,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Tulis komentar...',
+                    counterText: '',
+                    isDense: true,
+                    filled: true,
+                    fillColor: const Color(0xFFFAF9F5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: mengirim ? null : onKirim,
+                icon: mengirim
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded, color: _kGreen1),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, left: 4),
+            child: GestureDetector(
+              onTap: onAturan,
+              child: Text(
+                'Dengan berkomentar Anda menyetujui Aturan Komentar.',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 11,
+                  decoration: TextDecoration.underline,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            onPressed: mengirim ? null : onKirim,
-            icon: mengirim
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send_rounded, color: _kGreen1),
           ),
         ],
       ),

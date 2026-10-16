@@ -50,6 +50,59 @@ final beritaDetailProvider = FutureProvider.autoDispose
       return BeritaDetail.fromJson(json.cast<String, dynamic>());
     });
 
+/// Alasan laporan komentar: kode server -> label.
+const alasanLaporan = <(String, String)>[
+  ('spam', 'Spam atau iklan'),
+  ('kasar', 'Kasar, menghina, atau melecehkan'),
+  ('sara', 'Menyinggung SARA atau ujaran kebencian'),
+  ('tidak_pantas', 'Konten tidak pantas atau berbahaya'),
+  ('pribadi', 'Membocorkan data pribadi'),
+  ('lainnya', 'Lainnya'),
+];
+
+const _kBlokir = 'berita_blokir_orang';
+const _kAturan = 'aturan_komentar_diterima';
+
+/// Daftar anggota (id orang) yang komentarnya disembunyikan di perangkat ini,
+/// serta penanda bahwa pengguna sudah menyetujui Aturan Komentar. Disimpan
+/// lokal (secure storage); tidak dikirim ke server.
+class KomentarPrefs {
+  final Ref ref;
+  KomentarPrefs(this.ref);
+
+  Future<Set<int>> ambilBlokir() async {
+    final raw = await ref.read(secureStorageProvider).read(key: _kBlokir);
+    if (raw == null || raw.isEmpty) return <int>{};
+    return raw.split(',').map(int.tryParse).whereType<int>().toSet();
+  }
+
+  Future<void> _simpanBlokir(Set<int> s) async {
+    await ref
+        .read(secureStorageProvider)
+        .write(key: _kBlokir, value: s.join(','));
+    ref.invalidate(blokirProvider);
+  }
+
+  Future<void> blokir(int orangId) async {
+    final s = await ambilBlokir();
+    await _simpanBlokir({...s, orangId});
+  }
+
+  Future<void> bukaSemuaBlokir() => _simpanBlokir(<int>{});
+
+  Future<bool> aturanDiterima() async =>
+      (await ref.read(secureStorageProvider).read(key: _kAturan)) == '1';
+
+  Future<void> terimaAturan() =>
+      ref.read(secureStorageProvider).write(key: _kAturan, value: '1');
+}
+
+final komentarPrefsProvider = Provider((ref) => KomentarPrefs(ref));
+
+final blokirProvider = FutureProvider.autoDispose<Set<int>>(
+  (ref) => ref.read(komentarPrefsProvider).ambilBlokir(),
+);
+
 class BeritaAksi {
   final Ref ref;
   BeritaAksi(this.ref);
@@ -80,6 +133,20 @@ class BeritaAksi {
     );
     ref.invalidate(beritaDetailProvider(beritaId));
     ref.invalidate(beritaBerandaProvider);
+  }
+
+  /// Laporkan komentar ke pengurus.
+  Future<void> laporkanKomentar(
+    int pesanId,
+    String alasan, {
+    String? catatan,
+  }) async {
+    final api = ref.read(apiClientProvider);
+    await api.callKw(
+      model: 'tarombo.berita',
+      method: 'laporkan_komentar',
+      args: [pesanId, alasan, catatan ?? false],
+    );
   }
 }
 
