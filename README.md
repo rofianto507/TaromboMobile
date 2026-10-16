@@ -1,6 +1,29 @@
 # TaromboMobile 🌳
 
-Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **Odoo 19** melalui REST API. Dibangun dengan Flutter, aplikasi ini memungkinkan anggota untuk menelusuri pohon keluarga, mengajukan usulan data, menemukan kerabat terdekat di peta, serta mengelola arsip dokumen keluarga.
+Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **Odoo 19**. Dibangun dengan Flutter, aplikasi ini memungkinkan anggota menelusuri pohon keluarga, mengenali hubungan kekerabatan adat (partuturan), mengikuti berita dan agenda punguan, mengajukan usulan data, serta mengelola arsip keluarga.
+
+[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Unduh-3DDC84?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile)
+
+---
+
+## Tampilan Aplikasi
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/01-pohon-tarombo.png" width="200" alt="Pohon tarombo"/></td>
+    <td><img src="docs/screenshots/02-beranda.png" width="200" alt="Beranda"/></td>
+    <td><img src="docs/screenshots/03-partuturan.png" width="200" alt="Partuturan"/></td>
+    <td><img src="docs/screenshots/04-usulan.png" width="200" alt="Usulan data"/></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/05-kontak.png" width="200" alt="Kontak dan domisili"/></td>
+    <td><img src="docs/screenshots/06-berita-agenda.png" width="200" alt="Berita dan agenda"/></td>
+    <td><img src="docs/screenshots/07-sebaran-anggota.png" width="200" alt="Sebaran anggota"/></td>
+    <td><img src="docs/screenshots/08-arsip.png" width="200" alt="Arsip keluarga"/></td>
+  </tr>
+</table>
+
+> Seluruh tangkapan layar memakai data uji.
 
 ---
 
@@ -8,15 +31,18 @@ Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **O
 
 | Fitur | Deskripsi |
 |---|---|
-| 🔐 **Autentikasi** | Login/logout dengan session cookie yang disimpan secara aman (`flutter_secure_storage`) |
-| 🌲 **Pohon Keluarga** | Navigasi dan penelusuran silsilah antar generasi |
-| 👤 **Profil Anggota** | Lihat & edit data diri, foto profil, serta partuturan (hubungan kekerabatan) |
-| 📝 **Usulan Data** | Ajukan penambahan/perubahan data orang ke admin untuk ditinjau |
-| 🗺️ **Peta Kerabat** | Temukan kerabat terdekat di sekitar lokasi Anda (GPS + `flutter_map`) |
-| 📂 **Arsip Dokumen** | Unduh dan buka dokumen, foto, audio, atau video keluarga langsung dari perangkat |
-| 📋 **Direktori Keahlian** | Cari anggota berdasarkan profesi / keahlian |
-| 🪪 **Klaim Akun** | Alur pengajuan klaim akun bagi anggota yang belum terdaftar |
-| 🔔 **Partuturan** | Lihat daftar panggilan adat / hubungan kekerabatan antar anggota |
+| 🔐 **Autentikasi** | Login dengan akun biasa atau Google; sesi disimpan aman (`flutter_secure_storage`) |
+| 🌲 **Pohon Tarombo** | Penelusuran silsilah antar generasi (sundut), lengkap dengan marga |
+| ✅ **Akun Terverifikasi** | Lencana centang biru untuk anggota yang akunnya sudah diverifikasi pengurus |
+| 🧮 **Partuturan** | Hubungan dan sebutan kekerabatan adat antara dua anggota, lengkap dengan penjelasannya |
+| 📰 **Berita & Agenda** | Kabar dan jadwal punguan di beranda, bisa dibagikan, dengan komentar (laporkan dan blokir tersedia) |
+| 📇 **Kontak & Domisili** | Telepon, email, dan domisili sampai desa/kelurahan; hanya untuk akun terverifikasi |
+| 🗺️ **Sebaran Anggota** | Jumlah anggota per provinsi atau kabupaten/kota di peta (`flutter_map`), tanpa lokasi rumah |
+| 📝 **Usulan Data** | Ajukan penambahan atau koreksi data untuk ditinjau pengurus, dengan percakapan dua arah |
+| 📂 **Arsip Keluarga** | Dokumen, foto, audio, dan video; satu arsip dapat terkait banyak anggota |
+| 📋 **Direktori Keahlian** | Cari anggota berdasarkan profesi atau keahlian |
+| 🪪 **Klaim Akun & Banding** | Tautkan akun ke nama di pohon; ajukan banding bila nama sudah diklaim akun lain |
+| 🔔 **Notifikasi & Masukan** | Notifikasi status pengajuan, berita, dan pesan pengurus; kirim masukan dari menu Akun |
 
 ---
 
@@ -31,6 +57,7 @@ Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **O
 | Peta & GPS | `flutter_map` ^7.0.2 · `geolocator` ^13.0.2 · `latlong2` ^0.9.1 |
 | Gambar | `image_picker` ^1.1.2 · `cached_network_image` ^3.4.1 |
 | Arsip / File | `path_provider` ^2.1.5 · `open_filex` ^4.5.0 |
+| Berbagi | `share_plus` |
 | Lokalisasi | `flutter_localizations` · `intl` ^0.20.2 |
 | Backend | Odoo 19 (modul `tarombo`) via JSON-RPC / REST |
 
