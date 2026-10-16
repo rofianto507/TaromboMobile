@@ -96,52 +96,58 @@ class _BeritaListScreenState extends ConsumerState<BeritaListScreen> {
                             clipBehavior: Clip.antiAlias,
                             child: InkWell(
                               onTap: () => context.push('/berita/${b.id}'),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  SizedBox(
-                                    width: 104,
-                                    child: BeritaGambar(
-                                      beritaId: b.id,
-                                      punyaGambar: b.punyaGambar,
-                                      agenda: b.agenda,
-                                      height: 104,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          LabelJenis(item: b),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            b.judul,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                              height: 1.25,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            keteranganBerita(b),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Colors.grey.shade600,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
+                              // IntrinsicHeight: di dalam ListView tinggi tidak
+                              // dibatasi, jadi Row.stretch tanpa ini gagal layout
+                              // ("forces an infinite height") dan daftar kosong.
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    SizedBox(
+                                      width: 104,
+                                      child: BeritaGambar(
+                                        beritaId: b.id,
+                                        punyaGambar: b.punyaGambar,
+                                        agenda: b.agenda,
+                                        height: 104,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            LabelJenis(item: b),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              b.judul,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                height: 1.25,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              keteranganBerita(b),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );

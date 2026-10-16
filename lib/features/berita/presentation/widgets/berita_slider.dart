@@ -94,7 +94,7 @@ class _BeritaSliderState extends ConsumerState<BeritaSlider> {
               ),
             ),
             SizedBox(
-              height: 214,
+              height: 228,
               child: PageView.builder(
                 controller: _controller,
                 itemCount: items.length,
@@ -182,6 +182,19 @@ class KartuBerita extends StatelessWidget {
                         height: 1.25,
                       ),
                     ),
+                    if (item.ringkasan != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        item.ringkasan!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 12.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
                     const Spacer(),
                     Row(
                       children: [

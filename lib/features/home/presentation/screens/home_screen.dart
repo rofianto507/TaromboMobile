@@ -17,7 +17,7 @@ const _kGold = Color(0xFFC8A24A);
 // Seberapa jauh grid menu "naik" menimpa bagian bawah header hijau — sengaja
 // sampai separuh tinggi tile baris atas (Profil Keluarga/Hitung Partuturan),
 // bukan cuma sliver tipis di tepi.
-const _kOverlapTinggi = 46.0;
+const _kOverlapTinggi = 56.0;
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -80,14 +80,14 @@ class HomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                 child: GridView.count(
                   // Dua kolom x tiga baris, tile dipendekkan (rasio lebar:tinggi
-                  // besar) supaya area Berita & Agenda mulai terlihat; halaman
+                  // 1,43) supaya area Berita & Agenda mulai terlihat; halaman
                   // dapat digulir bila layar pendek.
                   crossAxisCount: 2,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 2.15,
+                  childAspectRatio: 1.43,
                   children: [
                     _MenuTile(
                       icon: Icons.family_restroom_rounded,
@@ -345,29 +345,34 @@ class _MenuTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             child: Stack(
               children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 24,
-                      color: locked ? Colors.grey.shade400 : _kGreen1,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.2,
-                        fontWeight: FontWeight.w600,
-                        color: locked ? Colors.grey.shade500 : null,
+                // Center: tanpa ini Column di dalam Stack menyusut mengikuti isinya
+                // dan menempel di kiri atas, bukan di tengah tile.
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 28,
+                        color: locked ? Colors.grey.shade400 : _kGreen1,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.2,
+                          fontWeight: FontWeight.w600,
+                          color: locked ? Colors.grey.shade500 : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 if (locked)
                   Positioned(
