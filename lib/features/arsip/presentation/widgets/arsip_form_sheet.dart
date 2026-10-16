@@ -7,7 +7,6 @@ import '../../../../shared/widgets/orang_search_sheet.dart';
 import '../providers/arsip_provider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
-const _kGold = Color(0xFFC8A24A);
 
 // Berkas dikirim sebagai base64 lewat JSON-RPC — batasi ukuran supaya tidak
 // menghabiskan memori / membuat request timeout di jaringan seluler.

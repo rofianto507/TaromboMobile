@@ -161,31 +161,38 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Berita & Agenda')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Gagal memuat. Periksa koneksi Anda.',
-              style: TextStyle(color: Colors.red.shade700),
+      // Kotak komentar ada di dalam body: bottomNavigationBar TIDAK ikut naik
+      // di atas keyboard, sedangkan body dikecilkan Scaffold saat keyboard muncul.
+      body: Column(
+        children: [
+          Expanded(
+            child: async.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Gagal memuat. Periksa koneksi Anda.',
+                    style: TextStyle(color: Colors.red.shade700),
+                  ),
+                ),
+              ),
+              data: (d) => _Isi(
+                detail: d,
+                terverifikasi: terverifikasi,
+                blokir: blokir,
+                onHapus: _hapus,
+                onLaporkan: _laporkan,
+                onBlokir: _blokir,
+                onBukaBlokir: () =>
+                    ref.read(komentarPrefsProvider).bukaSemuaBlokir(),
+              ),
             ),
           ),
-        ),
-        data: (d) => _Isi(
-          detail: d,
-          terverifikasi: terverifikasi,
-          blokir: blokir,
-          onHapus: _hapus,
-          onLaporkan: _laporkan,
-          onBlokir: _blokir,
-          onBukaBlokir: () => ref.read(komentarPrefsProvider).bukaSemuaBlokir(),
-        ),
-      ),
-      bottomNavigationBar: async.hasValue
-          ? SafeArea(
+          if (async.hasValue)
+            SafeArea(
+              top: false,
               child: Padding(
-                // bottomNavigationBar Scaffold sudah terangkat di atas keyboard.
                 padding: EdgeInsets.zero,
                 child: terverifikasi
                     ? _InputKomentar(
@@ -208,8 +215,9 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
                         ),
                       ),
               ),
-            )
-          : null,
+            ),
+        ],
+      ),
     );
   }
 }
@@ -240,142 +248,162 @@ class _Isi extends StatelessWidget {
         if (k.orangId == null || !blokir.contains(k.orangId)) k,
     ];
     final tersembunyi = detail.komentar.length - tampil.length;
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        BeritaGambar(
-          beritaId: b.id,
-          punyaGambar: b.punyaGambar,
-          agenda: b.agenda,
-          height: 210,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LabelJenis(item: b),
-              const SizedBox(height: 10),
-              Text(
-                b.judul,
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  height: 1.25,
-                  color: _kGreen1,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                [
-                  if (detail.penulis != null) detail.penulis!,
-                  if (b.tanggalTerbit != null) formatTanggal(b.tanggalTerbit!),
-                ].join(' • '),
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
-              ),
-              if (b.agenda) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: _kGold.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+    // Gambar tampil utuh (tinggi mengikuti rasio) dan ikut tergulir. Isi di
+    // bawahnya diberi tinggi minimal setinggi layar, sehingga gambar selalu
+    // bisa digulir sampai hilang sebelum daftar berhenti.
+    return LayoutBuilder(
+      builder: (context, constraints) => ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          BeritaGambar(
+            beritaId: b.id,
+            punyaGambar: b.punyaGambar,
+            agenda: b.agenda,
+            fit: BoxFit.fitWidth,
+          ),
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (b.tanggalMulai != null)
-                        _BarisAgenda(
-                          ikon: Icons.event_rounded,
-                          teks: b.tanggalSelesai != null
-                              ? '${formatTanggal(b.tanggalMulai!, denganJam: true)}\n'
-                                    's.d. ${formatTanggal(b.tanggalSelesai!, denganJam: true)}'
-                              : formatTanggal(b.tanggalMulai!, denganJam: true),
+                      LabelJenis(item: b),
+                      const SizedBox(height: 10),
+                      Text(
+                        b.judul,
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          height: 1.25,
+                          color: _kGreen1,
                         ),
-                      if (b.lokasi != null)
-                        _BarisAgenda(
-                          ikon: Icons.place_rounded,
-                          teks: b.lokasi!,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        [
+                          if (detail.penulis != null) detail.penulis!,
+                          if (b.tanggalTerbit != null)
+                            formatTanggal(b.tanggalTerbit!),
+                        ].join(' • '),
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12.5,
                         ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              if ((detail.isiHtml ?? '').trim().isNotEmpty)
-                Html(
-                  data: detail.isiHtml!,
-                  style: {
-                    'body': Style(
-                      margin: Margins.zero,
-                      padding: HtmlPaddings.zero,
-                      fontSize: FontSize(15),
-                      lineHeight: const LineHeight(1.55),
-                    ),
-                    'img': Style(width: Width(100, Unit.percent)),
-                  },
-                )
-              else if (b.ringkasan != null)
-                Text(
-                  b.ringkasan!,
-                  style: const TextStyle(fontSize: 15, height: 1.55),
-                ),
-              const SizedBox(height: 18),
-              Divider(color: Colors.grey.shade300),
-              const SizedBox(height: 8),
-              Text(
-                'Komentar (${tampil.length})',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: _kGreen1,
-                ),
-              ),
-              if (tersembunyi > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '$tersembunyi komentar dari pengguna yang Anda blokir disembunyikan.',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
+                      ),
+                      if (b.agenda) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: _kGold.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (b.tanggalMulai != null)
+                                _BarisAgenda(
+                                  ikon: Icons.event_rounded,
+                                  teks: b.tanggalSelesai != null
+                                      ? '${formatTanggal(b.tanggalMulai!, denganJam: true)}\n'
+                                            's.d. ${formatTanggal(b.tanggalSelesai!, denganJam: true)}'
+                                      : formatTanggal(
+                                          b.tanggalMulai!,
+                                          denganJam: true,
+                                        ),
+                                ),
+                              if (b.lokasi != null)
+                                _BarisAgenda(
+                                  ikon: Icons.place_rounded,
+                                  teks: b.lokasi!,
+                                ),
+                            ],
                           ),
                         ),
+                      ],
+                      const SizedBox(height: 14),
+                      if ((detail.isiHtml ?? '').trim().isNotEmpty)
+                        Html(
+                          data: detail.isiHtml!,
+                          style: {
+                            'body': Style(
+                              margin: Margins.zero,
+                              padding: HtmlPaddings.zero,
+                              fontSize: FontSize(15),
+                              lineHeight: const LineHeight(1.55),
+                            ),
+                            'img': Style(width: Width(100, Unit.percent)),
+                          },
+                        )
+                      else if (b.ringkasan != null)
+                        Text(
+                          b.ringkasan!,
+                          style: const TextStyle(fontSize: 15, height: 1.55),
+                        ),
+                      const SizedBox(height: 18),
+                      Divider(color: Colors.grey.shade300),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Komentar (${tampil.length})',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: _kGreen1,
+                        ),
                       ),
-                      TextButton(
-                        onPressed: onBukaBlokir,
-                        child: const Text('Buka blokir'),
-                      ),
+                      if (tersembunyi > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '$tersembunyi komentar dari pengguna yang Anda blokir disembunyikan.',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: onBukaBlokir,
+                                child: const Text('Buka blokir'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
-              const SizedBox(height: 10),
-            ],
+                if (tampil.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                    child: Text(
+                      terverifikasi
+                          ? 'Belum ada komentar. Jadilah yang pertama.'
+                          : 'Belum ada komentar.',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  )
+                else
+                  for (final k in tampil)
+                    _ItemKomentar(
+                      komentar: k,
+                      onHapus: () => onHapus(k),
+                      onLaporkan: () => onLaporkan(k),
+                      onBlokir: () => onBlokir(k),
+                    ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
-        ),
-        if (tampil.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-            child: Text(
-              terverifikasi
-                  ? 'Belum ada komentar. Jadilah yang pertama.'
-                  : 'Belum ada komentar.',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          )
-        else
-          for (final k in tampil)
-            _ItemKomentar(
-              komentar: k,
-              onHapus: () => onHapus(k),
-              onLaporkan: () => onLaporkan(k),
-              onBlokir: () => onBlokir(k),
-            ),
-        const SizedBox(height: 24),
-      ],
+        ],
+      ),
     );
   }
 }

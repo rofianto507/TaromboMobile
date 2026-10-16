@@ -17,6 +17,10 @@ class BeritaGambar extends ConsumerWidget {
   final double? height;
   final BorderRadius borderRadius;
 
+  /// Cara gambar mengisi bingkai. `fitWidth` dengan `height` null menampilkan
+  /// gambar utuh (tidak terpotong) dengan tinggi mengikuti rasionya.
+  final BoxFit fit;
+
   const BeritaGambar({
     super.key,
     required this.beritaId,
@@ -24,12 +28,13 @@ class BeritaGambar extends ConsumerWidget {
     required this.agenda,
     this.height,
     this.borderRadius = BorderRadius.zero,
+    this.fit = BoxFit.cover,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final placeholder = Container(
-      height: height,
+      height: height ?? 210,
       width: double.infinity,
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -66,7 +71,7 @@ class BeritaGambar extends ConsumerWidget {
                 : {'Cookie': 'session_id=${snap.data}'},
             height: height,
             width: double.infinity,
-            fit: BoxFit.cover,
+            fit: fit,
             placeholder: (_, _) => placeholder,
             errorWidget: (_, _, _) => placeholder,
           );
