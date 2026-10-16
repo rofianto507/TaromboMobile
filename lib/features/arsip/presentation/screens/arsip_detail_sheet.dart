@@ -239,10 +239,12 @@ class _ArsipDetailSheetState extends ConsumerState<_ArsipDetailSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            runSpacing: 8,
+            runSpacing: 6,
             children: [
               for (final o in item.orang)
                 ActionChip(
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
                   avatar: const Icon(
                     Icons.person_outline_rounded,
                     size: 18,

@@ -246,9 +246,11 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 6,
                 children: [
                   const Chip(
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
                     avatar: Icon(
                       Icons.person_rounded,
                       size: 18,
@@ -258,12 +260,16 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
                   ),
                   for (final o in _terkait)
                     InputChip(
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
                       label: Text(o['name'] as String),
                       onDeleted: _saving
                           ? null
                           : () => setState(() => _terkait.remove(o)),
                     ),
                   ActionChip(
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
                     avatar: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('Tautkan anggota'),
                     onPressed: _saving ? null : _tambahTerkait,
