@@ -12,6 +12,8 @@ String pathUntukTipeNotifikasi(String? tipe, [Map<String, dynamic>? data]) {
     case 'usulan':
       return '/usulan';
     case 'klaim_akun':
+      // Pesan dari pengurus pada pengajuan: langsung ke percakapannya.
+      if (data?['hasil'] == 'pesan') return '/klaim/percakapan';
       return '/home';
     default:
       return '/notifikasi';

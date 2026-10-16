@@ -185,9 +185,8 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
       bottomNavigationBar: async.hasValue
           ? SafeArea(
               child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
+                // bottomNavigationBar Scaffold sudah terangkat di atas keyboard.
+                padding: EdgeInsets.zero,
                 child: terverifikasi
                     ? _InputKomentar(
                         controller: _ctrl,

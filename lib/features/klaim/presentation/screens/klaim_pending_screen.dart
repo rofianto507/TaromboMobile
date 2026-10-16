@@ -174,6 +174,25 @@ class KlaimPendingScreen extends ConsumerWidget {
                                 icon: const Icon(Icons.refresh_rounded),
                                 label: const Text('Muat Ulang Status'),
                               ),
+                            if (info?.klaimId != null) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _kGreen1,
+                                  side: const BorderSide(color: _kGold),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    context.push('/klaim/percakapan'),
+                                icon: const Icon(
+                                  Icons.forum_outlined,
+                                  size: 20,
+                                ),
+                                label: const Text('Percakapan dengan Pengurus'),
+                              ),
+                            ],
                             const SizedBox(height: 10),
                             OutlinedButton(
                               style: OutlinedButton.styleFrom(

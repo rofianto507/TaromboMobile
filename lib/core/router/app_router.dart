@@ -9,6 +9,7 @@ import '../../features/klaim/domain/entities/klaim_info.dart';
 import '../../features/klaim/presentation/screens/klaim_search_screen.dart';
 import '../../features/klaim/presentation/screens/klaim_new_person_screen.dart';
 import '../../features/klaim/presentation/screens/klaim_pending_screen.dart';
+import '../../features/klaim/presentation/screens/klaim_percakapan_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/shell/presentation/screens/main_shell_screen.dart';
 import '../../features/tarombo_tree/presentation/screens/tarombo_tree_screen.dart';
@@ -109,7 +110,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // juga menolak pengajuan kedua). Batal dulu lewat tombol di Status Klaim.
       if (status == KlaimStatus.menunggu &&
           isKlaimRoute &&
-          loc != '/klaim/pending') {
+          loc != '/klaim/pending' &&
+          loc != '/klaim/percakapan') {
         return '/klaim/pending';
       }
 
@@ -161,6 +163,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/klaim/orang-baru',
         name: 'klaimOrangBaru',
         builder: (_, _) => const KlaimOrangBaruScreen(),
+      ),
+      GoRoute(
+        path: '/klaim/percakapan',
+        name: 'klaimPercakapan',
+        builder: (_, _) => const KlaimPercakapanScreen(),
       ),
       GoRoute(
         path: '/klaim/pending',
