@@ -1,12 +1,19 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../shared/widgets/app_dialog.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../klaim/domain/entities/klaim_info.dart';
 import '../../../klaim/presentation/providers/klaim_provider.dart';
 import '../../domain/entities/berita.dart';
@@ -16,6 +23,8 @@ import '../widgets/berita_slider.dart';
 
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold = Color(0xFFC8A24A);
+const _kLinkPlayStore =
+    'https://play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile';
 
 class BeritaDetailScreen extends ConsumerStatefulWidget {
   final int beritaId;
@@ -38,6 +47,76 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
   void _pesan(String teks) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(teks)));
+  }
+
+  /// Unduh gambar sampul (butuh sesi login) ke berkas sementara agar bisa
+  /// dilampirkan pada share. Null bila tidak ada gambar atau gagal.
+  Future<XFile?> _berkasGambar(BeritaRingkas b) async {
+    if (!b.punyaGambar || kIsWeb) return null;
+    try {
+      final token = await ref
+          .read(secureStorageProvider)
+          .read(key: AppConstants.tokenKey);
+      final res = await Dio().get<List<int>>(
+        '${AppConfig.baseUrl}/web/image/tarombo.berita/${b.id}/gambar',
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Cookie': 'session_id=$token'},
+        ),
+      );
+      final bytes = res.data;
+      if (bytes == null || bytes.isEmpty) return null;
+      final dir = await getTemporaryDirectory();
+      final f = File('${dir.path}/tarombo_berita_${b.id}.jpg');
+      await f.writeAsBytes(bytes, flush: true);
+      return XFile(f.path, mimeType: 'image/jpeg');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _teksBagikan(BeritaDetail d) {
+    final b = d.ringkas;
+    var isi = (b.ringkasan ?? '').trim();
+    if (isi.isEmpty) {
+      isi = (d.isiHtml ?? '')
+          .replaceAll(RegExp(r'<[^>]*>'), ' ')
+          .replaceAll(RegExp(r'&nbsp;'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (isi.length > 200) isi = '${isi.substring(0, 200).trimRight()}...';
+    }
+    return [
+      b.judul,
+      if (b.agenda && b.tanggalMulai != null)
+        'Waktu: ${formatTanggal(b.tanggalMulai!, denganJam: true)}',
+      if (b.agenda && b.lokasi != null) 'Lokasi: ${b.lokasi}',
+      if (isi.isNotEmpty) '\n$isi',
+      '\nKabar keluarga dan silsilah marga ada di aplikasi Tarombo. '
+          'Unduh gratis di Play Store:\n$_kLinkPlayStore',
+    ].join('\n');
+  }
+
+  bool _membagikan = false;
+
+  Future<void> _bagikan(BeritaDetail d) async {
+    if (_membagikan) return;
+    setState(() => _membagikan = true);
+    try {
+      final gambar = await _berkasGambar(d.ringkas);
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(
+          text: _teksBagikan(d),
+          subject: d.ringkas.judul,
+          files: gambar == null ? null : [gambar],
+        ),
+      );
+    } catch (_) {
+      _pesan('Gagal membagikan. Silakan coba lagi.');
+    } finally {
+      if (mounted) setState(() => _membagikan = false);
+    }
   }
 
   Future<void> _bukaAturan() async {
@@ -160,7 +239,23 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
         KlaimStatus.disetujui;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Berita & Agenda')),
+      appBar: AppBar(
+        title: const Text('Berita & Agenda'),
+        actions: [
+          if (async.hasValue)
+            IconButton(
+              tooltip: 'Bagikan',
+              icon: _membagikan
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.share_rounded),
+              onPressed: _membagikan ? null : () => _bagikan(async.value!),
+            ),
+        ],
+      ),
       // Kotak komentar ada di dalam body: bottomNavigationBar TIDAK ikut naik
       // di atas keyboard, sedangkan body dikecilkan Scaffold saat keyboard muncul.
       body: Column(

@@ -749,7 +749,16 @@ class _ArsipTab extends ConsumerWidget {
         ? Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-              onPressed: () => showArsipFormSheet(context, d.id),
+              onPressed: () async {
+                final ok = await showArsipFormSheet(context, d.id);
+                if (ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Arsip berhasil ditambahkan.'),
+                    ),
+                  );
+                }
+              },
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Tambah Arsip'),
               style: TextButton.styleFrom(foregroundColor: _kGreen1),

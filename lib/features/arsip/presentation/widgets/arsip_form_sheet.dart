@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../../../shared/utils/arsip_labels.dart';
 import '../../../../shared/widgets/orang_search_sheet.dart';
 import '../providers/arsip_provider.dart';
@@ -68,6 +69,8 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
   bool _publik = true;
   bool _saving = false;
   String? _errorBerkas;
+  // Snackbar tertutup sheet ini, jadi galat simpan ditampilkan di dalam form.
+  String? _errorSimpan;
 
   @override
   void dispose() {
@@ -119,7 +122,10 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
       return;
     }
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _errorSimpan = null;
+    });
     try {
       await ref
           .read(arsipRepositoryProvider)
@@ -138,10 +144,12 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+      setState(() {
+        _saving = false;
+        _errorSimpan = e is ServerException
+            ? e.message
+            : 'Gagal menyimpan. Periksa koneksi Anda lalu coba lagi.';
+      });
     }
   }
 
@@ -280,6 +288,19 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
                 value: _publik,
                 onChanged: (v) => setState(() => _publik = v),
               ),
+              if (_errorSimpan != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _errorSimpan!,
+                    style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                  ),
+                ),
               const SizedBox(height: 8),
               FilledButton(
                 onPressed: _saving ? null : _simpan,
