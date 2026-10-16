@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:open_filex/open_filex.dart';
@@ -348,6 +349,24 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               'id_ID',
             ).format(d.tanggalTinjau!),
           ),
+
+        if (d.state == 'diajukan' || d.state == 'draft') ...[
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _kGreen1,
+              side: const BorderSide(color: _kGold),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            onPressed: () {
+              final router = GoRouter.of(context);
+              Navigator.of(context).pop();
+              router.push('/usulan/percakapan/${d.id}');
+            },
+            icon: const Icon(Icons.forum_outlined, size: 20),
+            label: const Text('Percakapan dengan Pengurus'),
+          ),
+        ],
 
         if (d.lampiran.isNotEmpty) ...[
           const Divider(height: 28),

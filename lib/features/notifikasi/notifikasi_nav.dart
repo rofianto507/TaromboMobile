@@ -10,6 +10,11 @@ String pathUntukTipeNotifikasi(String? tipe, [Map<String, dynamic>? data]) {
       final id = int.tryParse('${data?['berita_id'] ?? ''}');
       return id != null ? '/berita/$id' : '/berita';
     case 'usulan':
+      // Pesan dari pengurus pada usulan: langsung ke percakapannya.
+      if (data?['hasil'] == 'pesan') {
+        final id = int.tryParse('${data?['usulan_id'] ?? ''}');
+        if (id != null) return '/usulan/percakapan/$id';
+      }
       return '/usulan';
     case 'klaim_akun':
       // Pesan dari pengurus pada pengajuan: langsung ke percakapannya.

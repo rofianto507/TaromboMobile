@@ -48,7 +48,7 @@ class PercakapanKlaim {
   });
 
   factory PercakapanKlaim.fromJson(Map<String, dynamic> j) => PercakapanKlaim(
-    klaimId: j['klaim_id'] as int,
+    klaimId: (j['record_id'] ?? j['klaim_id']) as int,
     tutup: j['tutup'] == true,
     pesan: [
       for (final m in (j['pesan'] as List? ?? const []))
@@ -57,14 +57,15 @@ class PercakapanKlaim {
   );
 }
 
+/// Percakapan sebuah pengajuan; kunci = (model Odoo, id rekaman).
 final percakapanKlaimProvider = FutureProvider.autoDispose
-    .family<PercakapanKlaim, int>((ref, klaimId) async {
+    .family<PercakapanKlaim, (String, int)>((ref, kunci) async {
       final api = ref.read(apiClientProvider);
       final json =
           await api.callKw(
-                model: 'tarombo.klaim_akun',
+                model: kunci.$1,
                 method: 'get_percakapan',
-                args: [klaimId],
+                args: [kunci.$2],
               )
               as Map;
       return PercakapanKlaim.fromJson(json.cast<String, dynamic>());
@@ -72,15 +73,37 @@ final percakapanKlaimProvider = FutureProvider.autoDispose
 
 /// Percakapan dua arah antara pengaju dan pengurus, tertaut ke pengajuan
 /// klaim atau banding (chatter pengajuan di panel web).
-class KlaimPercakapanScreen extends ConsumerStatefulWidget {
+class KlaimPercakapanScreen extends ConsumerWidget {
   const KlaimPercakapanScreen({super.key});
 
   @override
-  ConsumerState<KlaimPercakapanScreen> createState() =>
-      _KlaimPercakapanScreenState();
+  Widget build(BuildContext context, WidgetRef ref) => PercakapanScreen(
+    model: 'tarombo.klaim_akun',
+    recordId: ref.watch(klaimNotifierProvider).valueOrNull?.klaimId,
+  );
 }
 
-class _KlaimPercakapanScreenState extends ConsumerState<KlaimPercakapanScreen> {
+/// Percakapan pada sebuah usulan.
+class UsulanPercakapanScreen extends StatelessWidget {
+  final int usulanId;
+  const UsulanPercakapanScreen({super.key, required this.usulanId});
+
+  @override
+  Widget build(BuildContext context) =>
+      PercakapanScreen(model: 'tarombo.usulan', recordId: usulanId);
+}
+
+/// Layar percakapan generik untuk model yang memakai tarombo.percakapan.mixin.
+class PercakapanScreen extends ConsumerStatefulWidget {
+  final String model;
+  final int? recordId;
+  const PercakapanScreen({super.key, required this.model, this.recordId});
+
+  @override
+  ConsumerState<PercakapanScreen> createState() => _PercakapanScreenState();
+}
+
+class _PercakapanScreenState extends ConsumerState<PercakapanScreen> {
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   bool _mengirim = false;
@@ -112,12 +135,12 @@ class _KlaimPercakapanScreenState extends ConsumerState<KlaimPercakapanScreen> {
       await ref
           .read(apiClientProvider)
           .callKw(
-            model: 'tarombo.klaim_akun',
+            model: widget.model,
             method: 'kirim_pesan',
             args: [klaimId, teks],
           );
       _ctrl.clear();
-      ref.invalidate(percakapanKlaimProvider(klaimId));
+      ref.invalidate(percakapanKlaimProvider((widget.model, klaimId)));
       _keBawah();
     } catch (e) {
       if (!mounted) return;
@@ -137,7 +160,7 @@ class _KlaimPercakapanScreenState extends ConsumerState<KlaimPercakapanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final klaimId = ref.watch(klaimNotifierProvider).valueOrNull?.klaimId;
+    final klaimId = widget.recordId;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Percakapan dengan Pengurus'),
@@ -146,7 +169,9 @@ class _KlaimPercakapanScreenState extends ConsumerState<KlaimPercakapanScreen> {
             IconButton(
               tooltip: 'Muat ulang',
               icon: const Icon(Icons.refresh_rounded),
-              onPressed: () => ref.invalidate(percakapanKlaimProvider(klaimId)),
+              onPressed: () => ref.invalidate(
+                percakapanKlaimProvider((widget.model, klaimId)),
+              ),
             ),
         ],
       ),
@@ -161,7 +186,7 @@ class _KlaimPercakapanScreenState extends ConsumerState<KlaimPercakapanScreen> {
               ),
             )
           : ref
-                .watch(percakapanKlaimProvider(klaimId))
+                .watch(percakapanKlaimProvider((widget.model, klaimId)))
                 .when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),

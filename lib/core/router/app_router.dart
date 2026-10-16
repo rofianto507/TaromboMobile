@@ -165,6 +165,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const KlaimOrangBaruScreen(),
       ),
       GoRoute(
+        path: '/usulan/percakapan/:id',
+        name: 'usulanPercakapan',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, state) => UsulanPercakapanScreen(
+          usulanId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
         path: '/klaim/percakapan',
         name: 'klaimPercakapan',
         builder: (_, _) => const KlaimPercakapanScreen(),
