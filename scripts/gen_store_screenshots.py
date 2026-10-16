@@ -3,21 +3,24 @@ playstore/screenshots/raw -> playstore/screenshots/store."""
 import os
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 
-RAW, OUT = 'playstore/screenshots/raw', 'playstore/screenshots/store'
+RAW, OUT = 'playstore/screenshots/raw_baru', 'playstore/screenshots/store_baru'
 W, H = 1080, 1920
 G0, G1, G2, GOLD = (16, 30, 21), (46, 83, 57), (70, 122, 84), (200, 162, 74)
 BOLD = 'C:/Windows/Fonts/segoeuib.ttf'
 REG = 'C:/Windows/Fonts/segoeui.ttf'
 CROP_TOP, CROP_BOTTOM = 82, 130  # buang status bar & tombol navigasi sistem
 
-SAMARKAN = {'06-akun.png': (280, 415, 720, 468)}
+SAMARKAN = {}  # data uji sudah samaran; tidak perlu ditutup
 
 ITEMS = [
-    ('01-login.png', 'Tarombo Marga Silaen', 'Silsilah keluarga dalam genggaman Anda'),
-    ('02-beranda.png', 'Semua dalam satu beranda', 'Profil keluarga, partuturan, usulan, hingga arsip'),
-    ('03-kerabat-terdekat.png', 'Temukan kerabat terdekat', 'Berbagi lokasi sepenuhnya atas pilihan Anda'),
-    ('05-arsip.png', 'Arsip keluarga terjaga', 'Foto, dokumen, dan naskah warisan leluhur'),
-    ('06-akun.png', 'Privasi di tangan Anda', 'Kelola akun dan ajukan penghapusan kapan saja'),
+    ('09-tarombo.png', 'Telusuri tarombo keluarga', 'Pohon silsilah dari leluhur hingga generasi kini'),
+    ('02-beranda.png', 'Semua dalam satu beranda', 'Profil, partuturan, usulan, hingga kabar terbaru'),
+    ('05-partuturan.png', 'Kenali hubungan kekerabatan', 'Sebutan partuturan lengkap dengan penjelasannya'),
+    ('10-usulan.png', 'Ajukan data dengan mudah', 'Tambah atau perbarui data, ditinjau pengurus'),
+    ('04-kontak.png', 'Saling terhubung antaranggota', 'Kontak dan domisili hanya untuk akun terverifikasi'),
+    ('03-detail-berita.png', 'Berita dan agenda keluarga', 'Bagikan kabar kepada kerabat dengan satu ketukan'),
+    ('06-sebaran.png', 'Lihat sebaran anggota', 'Per wilayah, tanpa membuka lokasi rumah'),
+    ('07-arsip.png', 'Arsip keluarga terjaga', 'Satu arsip dapat terkait banyak anggota'),
 ]
 
 
@@ -112,5 +115,5 @@ if __name__ == '__main__':
     sheet = Image.new('RGB', (len(files) * 380 + 20, 700), (240, 240, 240))
     for n, f in enumerate(files):
         sheet.paste(Image.open(os.path.join(OUT, f)).resize((360, 640), Image.LANCZOS), (20 + n * 380, 30))
-    sheet.save('playstore/screenshots/_pratinjau.png')
+    sheet.save('playstore/screenshots/_pratinjau_baru.png')
     print('selesai', files)

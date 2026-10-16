@@ -29,13 +29,14 @@ final apiClientProvider = Provider<ApiClient>(
 );
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  final api     = ref.watch(apiClientProvider);
+  final api = ref.watch(apiClientProvider);
   final storage = ref.watch(secureStorageProvider);
   return AuthRepositoryImpl(AuthRemoteDatasource(api, storage), storage);
 });
 
-final authNotifierProvider =
-    AsyncNotifierProvider<AuthNotifier, User?>(AuthNotifier.new);
+final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, User?>(
+  AuthNotifier.new,
+);
 
 class AuthNotifier extends AsyncNotifier<User?> {
   @override
@@ -48,10 +49,15 @@ class AuthNotifier extends AsyncNotifier<User?> {
     return user;
   }
 
-  Future<void> login({required String username, required String password}) async {
+  Future<void> login({
+    required String username,
+    required String password,
+  }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => ref.read(authRepositoryProvider).login(username: username, password: password),
+      () => ref
+          .read(authRepositoryProvider)
+          .login(username: username, password: password),
     );
     if (state.valueOrNull != null) {
       ref.read(sessionExpiredProvider).reset();
@@ -61,7 +67,9 @@ class AuthNotifier extends AsyncNotifier<User?> {
 
   Future<void> loginWithGoogle() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(authRepositoryProvider).loginWithGoogle());
+    state = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).loginWithGoogle(),
+    );
     if (state.valueOrNull != null) {
       ref.read(sessionExpiredProvider).reset();
       unawaited(ref.read(pushServiceProvider).daftarkanToken());

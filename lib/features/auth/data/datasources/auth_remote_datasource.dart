@@ -24,7 +24,11 @@ class AuthRemoteDatasource {
         data: {
           'jsonrpc': '2.0',
           'method': 'call',
-          'params': {'db': AppConfig.dbName, 'login': username, 'password': password},
+          'params': {
+            'db': AppConfig.dbName,
+            'login': username,
+            'password': password,
+          },
         },
       );
       final body = response.data as Map<String, dynamic>;
@@ -50,11 +54,20 @@ class AuthRemoteDatasource {
       }
 
       await Future.wait([
-        _storage.write(key: AppConstants.tokenKey,  value: sessionId),
-        _storage.write(key: AppConstants.userIdKey, value: result['uid'].toString()),
-        _storage.write(key: AppConstants.nameKey,   value: result['name'] as String? ?? ''),
-        _storage.write(key: AppConstants.loginKey,
-            value: result['username'] as String? ?? result['login'] as String? ?? ''),
+        _storage.write(key: AppConstants.tokenKey, value: sessionId),
+        _storage.write(
+          key: AppConstants.userIdKey,
+          value: result['uid'].toString(),
+        ),
+        _storage.write(
+          key: AppConstants.nameKey,
+          value: result['name'] as String? ?? '',
+        ),
+        _storage.write(
+          key: AppConstants.loginKey,
+          value:
+              result['username'] as String? ?? result['login'] as String? ?? '',
+        ),
       ]);
 
       return AuthResponseModel.fromJson(result, sessionId);
@@ -105,7 +118,9 @@ class AuthRemoteDatasource {
       }
       final result = body['result'] as Map<String, dynamic>;
       if (result['success'] != true) {
-        throw AuthException(message: result['error'] as String? ?? 'Login Google gagal.');
+        throw AuthException(
+          message: result['error'] as String? ?? 'Login Google gagal.',
+        );
       }
 
       final String sessionId;
@@ -125,13 +140,23 @@ class AuthRemoteDatasource {
         AppConstants.sessionInfoPath,
         data: {'jsonrpc': '2.0', 'method': 'call', 'params': {}},
       );
-      final info = (infoResponse.data as Map<String, dynamic>)['result'] as Map<String, dynamic>;
+      final info =
+          (infoResponse.data as Map<String, dynamic>)['result']
+              as Map<String, dynamic>;
 
       await Future.wait([
-        _storage.write(key: AppConstants.userIdKey, value: info['uid'].toString()),
-        _storage.write(key: AppConstants.nameKey, value: info['name'] as String? ?? ''),
-        _storage.write(key: AppConstants.loginKey,
-            value: info['username'] as String? ?? info['login'] as String? ?? ''),
+        _storage.write(
+          key: AppConstants.userIdKey,
+          value: info['uid'].toString(),
+        ),
+        _storage.write(
+          key: AppConstants.nameKey,
+          value: info['name'] as String? ?? '',
+        ),
+        _storage.write(
+          key: AppConstants.loginKey,
+          value: info['username'] as String? ?? info['login'] as String? ?? '',
+        ),
       ]);
 
       return AuthResponseModel.fromJson(info, sessionId);

@@ -11,7 +11,10 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remote, this._storage);
 
   @override
-  Future<User> login({required String username, required String password}) async {
+  Future<User> login({
+    required String username,
+    required String password,
+  }) async {
     final model = await _remote.login(username: username, password: password);
     return model.toEntity();
   }
