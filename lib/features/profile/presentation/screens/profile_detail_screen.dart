@@ -220,8 +220,6 @@ class _KontakTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        _judul(Icons.contact_phone_outlined, 'Kontak'),
-        const SizedBox(height: 8),
         if (!adaKontak)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),

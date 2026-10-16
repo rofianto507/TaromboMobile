@@ -200,6 +200,34 @@ class _PercakapanScreenState extends ConsumerState<PercakapanScreen> {
                     _keBawah();
                     return Column(
                       children: [
+                        Container(
+                          width: double.infinity,
+                          color: _kGold.withValues(alpha: 0.12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.lock_outline_rounded,
+                                size: 16,
+                                color: _kGreen1,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Percakapan ini hanya dilihat pengurus. '
+                                  'Gunakan bahasa yang sopan.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         Expanded(
                           child: p.pesan.isEmpty
                               ? Center(

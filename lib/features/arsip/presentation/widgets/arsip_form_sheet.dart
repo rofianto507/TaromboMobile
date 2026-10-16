@@ -176,35 +176,33 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
                 ),
               ),
               const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _saving ? null : _pilihBerkas,
-                icon: Icon(
-                  _berkas == null
-                      ? Icons.attach_file_rounded
-                      : jenisArsipIcon(_jenis),
-                ),
-                label: Text(
-                  _berkas == null
-                      ? 'Pilih Berkas *'
-                      : '${_berkas!.name} (${_ukuran(_berkas!.size)})',
-                  overflow: TextOverflow.ellipsis,
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _kGreen1,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: BorderSide(
-                    color: _errorBerkas != null ? Colors.red : _kGold,
+              // Tampil sebagai kolom isian (sama dengan field lain); ketuk untuk memilih.
+              InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: _saving ? null : _pilihBerkas,
+                child: InputDecorator(
+                  decoration: _dec('Berkas *').copyWith(
+                    errorText: _errorBerkas,
+                    errorMaxLines: 3,
+                    suffixIcon: Icon(
+                      _berkas == null
+                          ? Icons.attach_file_rounded
+                          : jenisArsipIcon(_jenis),
+                      color: _kGreen1,
+                    ),
+                  ),
+                  child: Text(
+                    _berkas == null
+                        ? 'Ketuk untuk memilih berkas'
+                        : '${_berkas!.name} (${_ukuran(_berkas!.size)})',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _berkas == null ? Colors.grey.shade600 : null,
+                    ),
                   ),
                 ),
               ),
-              if (_errorBerkas != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6, left: 4),
-                  child: Text(
-                    _errorBerkas!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nama,
@@ -238,43 +236,41 @@ class _ArsipFormState extends ConsumerState<_ArsipForm> {
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Orang terkait',
-                style: TextStyle(fontWeight: FontWeight.w700, color: _kGreen1),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  const Chip(
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    avatar: Icon(
-                      Icons.person_rounded,
-                      size: 18,
-                      color: _kGreen1,
-                    ),
-                    label: Text('Profil Anda'),
-                  ),
-                  for (final o in _terkait)
-                    InputChip(
+              const SizedBox(height: 12),
+              InputDecorator(
+                decoration: _dec('Orang terkait'),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    const Chip(
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
-                      label: Text(o['name'] as String),
-                      onDeleted: _saving
-                          ? null
-                          : () => setState(() => _terkait.remove(o)),
+                      avatar: Icon(
+                        Icons.person_rounded,
+                        size: 18,
+                        color: _kGreen1,
+                      ),
+                      label: Text('Profil Anda'),
                     ),
-                  ActionChip(
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    avatar: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Tautkan anggota'),
-                    onPressed: _saving ? null : _tambahTerkait,
-                  ),
-                ],
+                    for (final o in _terkait)
+                      InputChip(
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        label: Text(o['name'] as String),
+                        onDeleted: _saving
+                            ? null
+                            : () => setState(() => _terkait.remove(o)),
+                      ),
+                    ActionChip(
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      avatar: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Tautkan anggota'),
+                      onPressed: _saving ? null : _tambahTerkait,
+                    ),
+                  ],
+                ),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
