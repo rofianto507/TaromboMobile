@@ -224,6 +224,7 @@ class UsulanSubmitService {
     double? usulLatitude,
     double? usulLongitude,
     int? usulTahunLahir,
+    int? usulUrutan,
   }) async {
     final api = ref.read(apiClientProvider);
     final id = await api.callKw(
@@ -248,6 +249,7 @@ class UsulanSubmitService {
           'usul_latitude': ?usulLatitude,
           'usul_longitude': ?usulLongitude,
           'usul_tahun_lahir': ?usulTahunLahir,
+          'usul_urutan': ?usulUrutan,
         },
       ],
     );

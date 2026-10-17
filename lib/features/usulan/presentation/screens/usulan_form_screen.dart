@@ -39,6 +39,10 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   final _namaCtrl = TextEditingController();
   String _jenisKelamin = 'L';
   Map<String, dynamic>? _ayah;
+  // "Anak ke-" untuk mode Tambah: disarankan otomatis (terbesar + 1) setelah
+  // ayah dipilih, boleh diubah. Nomor yang sudah dipakai saudara ditolak.
+  final _urutanTambahCtrl = TextEditingController();
+  Set<int> _urutanTerpakai = {};
 
   // Edit (koreksi/lengkapi)
   Map<String, dynamic>? _target;
@@ -130,7 +134,48 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
         ['jenis_kelamin', '=', 'L'],
       ],
     );
-    if (result != null) setState(() => _ayah = result);
+    if (result == null) return;
+    setState(() {
+      _ayah = result;
+      _urutanTerpakai = {};
+      _urutanTambahCtrl.clear();
+    });
+    await _sarankanUrutan(result['id'] as int);
+  }
+
+  /// Ambil nomor urut anak yang sudah ada di bawah ayah ini, lalu isi
+  /// "Anak ke-" dengan nomor berikutnya. Gagal jaringan: biarkan kosong,
+  /// server tetap mengisi otomatis saat usulan disetujui.
+  Future<void> _sarankanUrutan(int ayahId) async {
+    try {
+      final rows =
+          await ref
+                  .read(apiClientProvider)
+                  .callKw(
+                    model: 'tarombo.orang',
+                    method: 'search_read',
+                    args: [
+                      [
+                        ['ayah_id', '=', ayahId],
+                      ],
+                    ],
+                    kwargs: {
+                      'fields': ['urutan'],
+                    },
+                  )
+              as List;
+      final terpakai = {for (final x in rows) (x as Map)['urutan'] as int};
+      if (!mounted || _ayah?['id'] != ayahId) return;
+      setState(() {
+        _urutanTerpakai = terpakai;
+        final maks = terpakai.isEmpty
+            ? 0
+            : terpakai.reduce((a, b) => a > b ? a : b);
+        _urutanTambahCtrl.text = '${maks + 1}';
+      });
+    } catch (_) {
+      // dibiarkan kosong
+    }
   }
 
   Future<void> _pickTarget() async {
@@ -253,6 +298,7 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           usulNoTelp: _telpCtrl.text.trim(),
           usulEmailKontak: _emailCtrl.text.trim(),
           usulTahunLahir: _tanggalLahir?.year,
+          usulUrutan: int.tryParse(_urutanTambahCtrl.text.trim()),
         );
       } else {
         await service.submitEdit(
@@ -292,6 +338,7 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   @override
   void dispose() {
     _namaCtrl.dispose();
+    _urutanTambahCtrl.dispose();
     _suamiNamaCtrl.dispose();
     _sumberCtrl.dispose();
     _catatanCtrl.dispose();
@@ -479,6 +526,31 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
         subtitle: const Text('Ketuk untuk mencari di pohon keluarga'),
         trailing: const Icon(Icons.search),
         onTap: _pickAyah,
+      ),
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: _urutanTambahCtrl,
+        enabled: _ayah != null,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: 'Anak ke-',
+          border: const OutlineInputBorder(),
+          helperText: _ayah == null
+              ? 'Pilih ayah dulu; nomor disarankan otomatis.'
+              : 'Disarankan otomatis. Ubah bila Anda tahu urutan lahir yang benar.',
+          helperMaxLines: 2,
+        ),
+        validator: (v) {
+          final t = (v ?? '').trim();
+          if (t.isEmpty) return null; // server mengisi otomatis
+          final n = int.tryParse(t);
+          if (n == null || n < 1) return 'Isi angka 1 atau lebih';
+          if (_urutanTerpakai.contains(n)) {
+            final daftar = (_urutanTerpakai.toList()..sort()).join(', ');
+            return 'Nomor $n sudah dipakai saudara lain (terpakai: $daftar)';
+          }
+          return null;
+        },
       ),
     ];
   }
