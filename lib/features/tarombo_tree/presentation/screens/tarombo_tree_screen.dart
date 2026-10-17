@@ -285,7 +285,7 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
   }
 
   /// Memotret seluruh kanvas pohon (bukan hanya bagian yang terlihat di layar),
-  /// memberinya judul dan ajakan unduh, lalu membagikannya sebagai gambar.
+  /// memberinya judul, lalu membagikannya sebagai gambar.
   Future<void> _bagikan(PohonNode root) async {
     if (_membagikan) return;
     final boundary =
@@ -299,9 +299,8 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
       final pohon = await boundary.toImage(pixelRatio: rasio);
 
       const header = 88.0;
-      const footer = 76.0;
       final lebar = math.max(w, 360.0);
-      final tinggi = header + h + footer;
+      final tinggi = header + h + 16;
 
       final rec = ui.PictureRecorder();
       final c = Canvas(rec);
@@ -340,25 +339,6 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
         Rect.fromLTWH((lebar - w) / 2, header, w, h),
         Paint()..filterQuality = FilterQuality.high,
       );
-      c.drawRect(
-        Rect.fromLTWH(lebar * 0.2, header + h + 8, lebar * 0.6, 1.5),
-        Paint()..color = _kGold,
-      );
-      teks(
-        'Unduh aplikasi Tarombo di Play Store',
-        header + h + 20,
-        13,
-        _kGreen1,
-        FontWeight.w700,
-      );
-      teks(
-        'play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile',
-        header + h + 42,
-        10,
-        Colors.grey.shade600,
-        FontWeight.w400,
-      );
-
       final hasil = await rec.endRecording().toImage(
         (lebar * rasio).round(),
         (tinggi * rasio).round(),
