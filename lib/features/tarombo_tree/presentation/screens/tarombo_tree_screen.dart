@@ -1,9 +1,15 @@
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graphview/graphview.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/notifikasi_button.dart';
@@ -18,6 +24,8 @@ import '../providers/pohon_provider.dart';
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold = Color(0xFFC8A24A);
 const _kPink = Color(0xFFE0729A);
+const _kLinkPlayStore =
+    'https://play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile';
 
 // Ukuran kartu node SENGAJA tetap (bukan dihitung dari widget asli) —
 // graphview butuh node.size TERISI SEBELUM algoritma jalan (dipakai untuk
@@ -57,6 +65,8 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
   // tiap kanvas berganti fokus/mode — lihat pemakaiannya di _buildTree.
   final _transformCtrl = TransformationController();
   String? _viewKeyTerakhir;
+  final _kanvasKey = GlobalKey();
+  bool _membagikan = false;
 
   @override
   void dispose() {
@@ -210,45 +220,48 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
           boundaryMargin: const EdgeInsets.all(120),
           minScale: 0.4,
           maxScale: 2.5,
-          child: SizedBox(
-            width: canvasSize.width,
-            height: canvasSize.height,
-            child: Stack(
-              children: [
-                CustomPaint(
-                  size: canvasSize,
-                  painter: _PohonEdgePainter(
-                    graph: graph,
-                    offset: Offset(dx, dy),
-                  ),
-                ),
-                for (final node in graph.nodes)
-                  Positioned(
-                    left: node.position.dx + dx,
-                    top: node.position.dy + dy,
-                    width: _kCardW,
-                    height: _kCardH,
-                    child: Builder(
-                      builder: (context) {
-                        final data = byId[node.key!.value as int]!;
-                        return _PohonCard(
-                          key: ValueKey(data.id),
-                          data: data,
-                          token: token,
-                          onTap: () {
-                            if (data.tertutup) {
-                              ref
-                                  .read(pohonNotifierProvider.notifier)
-                                  .pindahFokus(data.id);
-                            } else {
-                              context.push('/profil/${data.id}');
-                            }
-                          },
-                        );
-                      },
+          child: RepaintBoundary(
+            key: _kanvasKey,
+            child: SizedBox(
+              width: canvasSize.width,
+              height: canvasSize.height,
+              child: Stack(
+                children: [
+                  CustomPaint(
+                    size: canvasSize,
+                    painter: _PohonEdgePainter(
+                      graph: graph,
+                      offset: Offset(dx, dy),
                     ),
                   ),
-              ],
+                  for (final node in graph.nodes)
+                    Positioned(
+                      left: node.position.dx + dx,
+                      top: node.position.dy + dy,
+                      width: _kCardW,
+                      height: _kCardH,
+                      child: Builder(
+                        builder: (context) {
+                          final data = byId[node.key!.value as int]!;
+                          return _PohonCard(
+                            key: ValueKey(data.id),
+                            data: data,
+                            token: token,
+                            onTap: () {
+                              if (data.tertutup) {
+                                ref
+                                    .read(pohonNotifierProvider.notifier)
+                                    .pindahFokus(data.id);
+                              } else {
+                                context.push('/profil/${data.id}');
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -263,10 +276,117 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
             onRecenter: () =>
                 ref.read(pohonNotifierProvider.notifier).kembaliKeDiriSendiri(),
             onRefresh: () => ref.invalidate(pohonNotifierProvider),
+            membagikan: _membagikan,
+            onShare: () => _bagikan(root),
           ),
         ),
       ],
     );
+  }
+
+  /// Memotret seluruh kanvas pohon (bukan hanya bagian yang terlihat di layar),
+  /// memberinya judul dan ajakan unduh, lalu membagikannya sebagai gambar.
+  Future<void> _bagikan(PohonNode root) async {
+    if (_membagikan) return;
+    final boundary =
+        _kanvasKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) return;
+    setState(() => _membagikan = true);
+    try {
+      final w = boundary.size.width;
+      final h = boundary.size.height;
+      final rasio = (4096 / math.max(w, h)).clamp(1.0, 3.0).toDouble();
+      final pohon = await boundary.toImage(pixelRatio: rasio);
+
+      const header = 88.0;
+      const footer = 76.0;
+      final lebar = math.max(w, 360.0);
+      final tinggi = header + h + footer;
+
+      final rec = ui.PictureRecorder();
+      final c = Canvas(rec);
+      c.scale(rasio);
+      c.drawRect(
+        Rect.fromLTWH(0, 0, lebar, tinggi),
+        Paint()..color = Colors.white,
+      );
+      c.drawRect(Rect.fromLTWH(0, 0, lebar, 6), Paint()..color = _kGreen1);
+
+      void teks(String t, double y, double ukuran, Color warna, FontWeight b) {
+        final tp = TextPainter(
+          text: TextSpan(
+            text: t,
+            style: TextStyle(fontSize: ukuran, color: warna, fontWeight: b),
+          ),
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr,
+          maxLines: 2,
+          ellipsis: '…',
+        )..layout(maxWidth: lebar - 40);
+        tp.paint(c, Offset((lebar - tp.width) / 2, y));
+      }
+
+      teks('Tarombo ${root.name}', 22, 22, _kGreen1, FontWeight.w800);
+      teks(
+        'Silsilah marga Silaen',
+        54,
+        13,
+        Colors.grey.shade600,
+        FontWeight.w500,
+      );
+      c.drawImageRect(
+        pohon,
+        Rect.fromLTWH(0, 0, pohon.width.toDouble(), pohon.height.toDouble()),
+        Rect.fromLTWH((lebar - w) / 2, header, w, h),
+        Paint()..filterQuality = FilterQuality.high,
+      );
+      c.drawRect(
+        Rect.fromLTWH(lebar * 0.2, header + h + 8, lebar * 0.6, 1.5),
+        Paint()..color = _kGold,
+      );
+      teks(
+        'Unduh aplikasi Tarombo di Play Store',
+        header + h + 20,
+        13,
+        _kGreen1,
+        FontWeight.w700,
+      );
+      teks(
+        'play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile',
+        header + h + 42,
+        10,
+        Colors.grey.shade600,
+        FontWeight.w400,
+      );
+
+      final hasil = await rec.endRecording().toImage(
+        (lebar * rasio).round(),
+        (tinggi * rasio).round(),
+      );
+      final bytes = await hasil.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) throw StateError('gagal membuat gambar');
+      final dir = await getTemporaryDirectory();
+      final f = File('${dir.path}/tarombo_${root.id}.png');
+      await f.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(
+          text:
+              'Tarombo ${root.name}. Telusuri silsilah marga di aplikasi '
+              'Tarombo. Unduh gratis di Play Store:\n$_kLinkPlayStore',
+          subject: 'Tarombo ${root.name}',
+          files: [XFile(f.path, mimeType: 'image/png')],
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal membagikan pohon. Coba lagi.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _membagikan = false);
+    }
   }
 
   // Sengaja HANYA `addEdge` di sini (bukan `addNode` lagi) — addEdge sudah
@@ -310,11 +430,15 @@ class _PohonControls extends StatelessWidget {
   final bool isOverride;
   final VoidCallback onRecenter;
   final VoidCallback onRefresh;
+  final VoidCallback onShare;
+  final bool membagikan;
 
   const _PohonControls({
     required this.isOverride,
     required this.onRecenter,
     required this.onRefresh,
+    required this.onShare,
+    required this.membagikan,
   });
 
   @override
@@ -330,6 +454,12 @@ class _PohonControls extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
+        _tombol(
+          icon: Icons.ios_share_rounded,
+          tooltip: 'Bagikan gambar pohon',
+          onTap: membagikan ? () {} : onShare,
+        ),
+        const SizedBox(height: 10),
         _tombol(
           icon: Icons.refresh_rounded,
           tooltip: 'Muat ulang pohon',

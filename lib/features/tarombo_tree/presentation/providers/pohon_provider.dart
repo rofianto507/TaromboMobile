@@ -21,7 +21,9 @@ enum PohonMode {
 /// lihat get_pohon_data() di backend (models/tarombo_pohon.py).
 final pohonModeProvider = StateProvider<PohonMode>((ref) => PohonMode.cabang);
 
-final pohonNotifierProvider = AsyncNotifierProvider<PohonNotifier, PohonNode?>(PohonNotifier.new);
+final pohonNotifierProvider = AsyncNotifierProvider<PohonNotifier, PohonNode?>(
+  PohonNotifier.new,
+);
 
 class PohonNotifier extends AsyncNotifier<PohonNode?> {
   @override
