@@ -25,6 +25,7 @@ import '../../features/direktori_keahlian/presentation/screens/direktori_keahlia
 import '../../features/nearby_map/presentation/screens/nearby_map_screen.dart';
 import '../../features/berita/presentation/screens/berita_list_screen.dart';
 import '../../features/masukan/presentation/screens/masukan_screen.dart';
+import '../../features/account/presentation/screens/atur_sandi_screen.dart';
 import '../../features/berita/presentation/screens/berita_detail_screen.dart';
 import '../../features/arsip/presentation/screens/arsip_list_screen.dart';
 import '../../features/splash/splash_screen.dart';
@@ -40,7 +41,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier();
   ref.onDispose(notifier.dispose);
 
-  ref.listen(authNotifierProvider, (_, _) => notifier.signal());
+  ref.listen(authNotifierProvider, (prev, next) {
+    // Keluar akun: pengingat klaim ditampilkan lagi pada login berikutnya.
+    // Tanpa ini, penanda "dilewati" dari sesi sebelumnya ikut terbawa.
+    if (prev?.valueOrNull != null && next.valueOrNull == null) {
+      ref.read(klaimReminderDismissedProvider.notifier).state = false;
+    }
+    notifier.signal();
+  });
   ref.listen(klaimNotifierProvider, (_, _) => notifier.signal());
   ref.listen(klaimReminderDismissedProvider, (_, _) => notifier.signal());
   ref.listen(_splashTimerProvider, (_, _) => notifier.signal());
@@ -127,6 +135,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final reminderTarget = status == KlaimStatus.belum
           ? '/klaim'
           : '/klaim/pending';
+
+      // Pengguna yang sudah login tidak boleh tertahan di layar login,
+      // daftar, atau splash. Sebelumnya hanya akun yang sudah disetujui yang
+      // dialihkan keluar dari sana, sehingga akun belum tertaut yang pernah
+      // menekan "Lewati" tetap di layar login walau login berhasil.
+      if (loc == '/login' || loc == '/register' || loc == '/splash') {
+        return ref.read(klaimReminderDismissedProvider)
+            ? '/home'
+            : reminderTarget;
+      }
 
       if (isUsulanRoute) {
         return isKlaimRoute ? null : reminderTarget;
@@ -291,6 +309,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'arsip',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, _) => const ArsipListScreen(),
+      ),
+      GoRoute(
+        path: '/akun/sandi',
+        name: 'atur_sandi',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, _) => const AturSandiScreen(),
       ),
       GoRoute(
         path: '/masukan',

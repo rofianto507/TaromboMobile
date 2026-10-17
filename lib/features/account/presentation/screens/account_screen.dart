@@ -173,6 +173,12 @@ class AccountScreen extends ConsumerWidget {
               _SectionCard(
                 children: [
                   _LinkTile(
+                    icon: Icons.lock_outline_rounded,
+                    label: 'Kata Sandi',
+                    onTap: () => context.push('/akun/sandi'),
+                  ),
+                  const _Divider(),
+                  _LinkTile(
                     icon: Icons.feedback_outlined,
                     label: 'Kirim Masukan atau Laporan',
                     onTap: () => context.push('/masukan'),

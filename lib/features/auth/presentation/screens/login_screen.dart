@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,6 +62,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           },
         );
   }
+
+  bool get _googleTersedia =>
+      kIsWeb || defaultTargetPlatform != TargetPlatform.iOS;
 
   Future<void> _submitGoogle() async {
     setState(() => _errorMsg = null);
@@ -332,65 +337,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                               ),
                                       ),
                                     ),
-                                    const SizedBox(height: 20),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Divider(
-                                            color: Colors.grey.shade300,
+                                    // Login Google disembunyikan di iOS: aplikasi memakai
+                                    // sistem akun sendiri (email), sehingga aturan App Store 4.8
+                                    // (Sign in with Apple) tidak berlaku.
+                                    if (_googleTersedia) ...[
+                                      const SizedBox(height: 20),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Divider(
+                                              color: Colors.grey.shade300,
+                                            ),
                                           ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                            ),
+                                            child: Text(
+                                              'atau',
+                                              style: TextStyle(
+                                                color: Colors.grey.shade500,
+                                                fontSize: 12,
+                                              ),
+                                            ),
                                           ),
-                                          child: Text(
-                                            'atau',
+                                          Expanded(
+                                            child: Divider(
+                                              color: Colors.grey.shade300,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 20),
+                                      SizedBox(
+                                        height: 50,
+                                        child: OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: _kDark,
+                                            side: BorderSide(
+                                              color: Colors.grey.shade300,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          onPressed: isLoading
+                                              ? null
+                                              : _submitGoogle,
+                                          icon: Image.asset(
+                                            'assets/images/google_logo.png',
+                                            width: 20,
+                                            height: 20,
+                                          ),
+                                          label: const Text(
+                                            'Masuk dengan Google',
                                             style: TextStyle(
-                                              color: Colors.grey.shade500,
-                                              fontSize: 12,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
                                             ),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Divider(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 20),
-                                    SizedBox(
-                                      height: 50,
-                                      child: OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: _kDark,
-                                          side: BorderSide(
-                                            color: Colors.grey.shade300,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                        ),
-                                        onPressed: isLoading
-                                            ? null
-                                            : _submitGoogle,
-                                        icon: Image.asset(
-                                          'assets/images/google_logo.png',
-                                          width: 20,
-                                          height: 20,
-                                        ),
-                                        label: const Text(
-                                          'Masuk dengan Google',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
-                                    ),
+                                    ],
                                   ],
                                 ),
                               ),
