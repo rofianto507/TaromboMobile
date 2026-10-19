@@ -32,7 +32,7 @@ const _kLinkPlayStore =
 // spacing antar-saudara), jadi tidak bisa menunggu hasil layout widget
 // sungguhan seperti pola bawaan package ini.
 const _kCardW = 96.0;
-const _kCardH = 132.0;
+const _kCardH = 148.0;
 
 // Token sesi dibaca SEKALI di sini (di luar graphview), bukan lewat
 // OrangAvatar (ConsumerWidget dengan ref.watch di dalamnya) — builder node
@@ -524,7 +524,7 @@ class _PohonCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: 96,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -540,79 +540,114 @@ class _PohonCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _FotoOrang(
-                  orangId: data.id,
-                  jenisKelamin: data.jenisKelamin,
-                  token: token,
-                  radius: 24,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _FotoOrang(
+                      orangId: data.id,
+                      jenisKelamin: data.jenisKelamin,
+                      token: token,
+                      radius: 24,
+                    ),
+                    // Ada KETURUNAN di bawah yang tidak ditampilkan (batas
+                    // kedalaman/jumlah simpul, atau saudara yang sengaja
+                    // ditutup) — beda arah dari hasMoreAtas, jadi ikon & posisi
+                    // sengaja dibedakan (bawah-kanan, panah bawah).
+                    if (data.collapsed || data.hasMore)
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: _kGold,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add_rounded,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    // Ada LELUHUR di atas node ini yang tidak ditampilkan (cuma
+                    // berlaku untuk node akar/ayah hasil mode 'cabang'). Tanpa
+                    // ini, pohon terlihat berhenti total di titik teratas padahal
+                    // datanya masih ada.
+                    if (data.hasMoreAtas)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: _kGreen1,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_upward_rounded,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                // Ada KETURUNAN di bawah yang tidak ditampilkan (batas
-                // kedalaman/jumlah simpul, atau saudara yang sengaja
-                // ditutup) — beda arah dari hasMoreAtas, jadi ikon & posisi
-                // sengaja dibedakan (bawah-kanan, panah bawah).
-                if (data.collapsed || data.hasMore)
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: _kGold,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add_rounded,
-                        size: 12,
-                        color: Colors.white,
-                      ),
+                const SizedBox(height: 6),
+                OrangNama(
+                  nama: data.name,
+                  terverifikasi: data.terhubungAkun,
+                  badgeSize: 13,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: _kGreen1,
+                  ),
+                ),
+                if (data.istri.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    data.istri.first,
+                    textAlign: TextAlign.center,
+                    maxLines: data.istri.length > 1 ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 9,
+                      height: 1.2,
+                      color: Colors.grey.shade700,
                     ),
                   ),
-                // Ada LELUHUR di atas node ini yang tidak ditampilkan (cuma
-                // berlaku untuk node akar/ayah hasil mode 'cabang'). Tanpa
-                // ini, pohon terlihat berhenti total di titik teratas padahal
-                // datanya masih ada.
-                if (data.hasMoreAtas)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: _kGreen1,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_upward_rounded,
-                        size: 12,
-                        color: Colors.white,
+                  if (data.istri.length > 1)
+                    Text(
+                      '+${data.istri.length - 1} istri lain',
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        color: Colors.grey.shade500,
                       ),
                     ),
-                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 6),
-            OrangNama(
-              nama: data.name,
-              terverifikasi: data.terhubungAkun,
-              badgeSize: 13,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: _kGreen1,
+            // Sundut: angka saja di pojok kanan atas kartu.
+            Positioned(
+              top: -6,
+              right: -4,
+              child: Text(
+                '${data.sundut}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: warnaGender,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Sundut ${data.sundut}',
-              style: TextStyle(fontSize: 9, color: warnaGender),
             ),
           ],
         ),

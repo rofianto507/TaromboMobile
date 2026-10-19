@@ -13,7 +13,7 @@ import '../providers/usulan_provider.dart';
 const _kGreen1 = Color(0xFF2E5339);
 const _kGold = Color(0xFFC8A24A);
 
-enum _Mode { tambah, edit }
+enum _Mode { tambah, edit, istri }
 
 class UsulanFormScreen extends ConsumerStatefulWidget {
   // Dipakai tombol "Perbarui Data Saya" di halaman profil sendiri — target
@@ -21,10 +21,16 @@ class UsulanFormScreen extends ConsumerStatefulWidget {
   // lewat pencarian lagi (lihat _modeTerkunci).
   final int? initialTargetId;
   final String? initialTargetName;
+  // Dipakai tombol "Usulkan data istri" di profil: langsung ke mode data istri
+  // dengan suami yang sudah terpilih.
+  final int? initialIstriSuamiId;
+  final String? initialIstriSuamiName;
   const UsulanFormScreen({
     super.key,
     this.initialTargetId,
     this.initialTargetName,
+    this.initialIstriSuamiId,
+    this.initialIstriSuamiName,
   });
 
   @override
@@ -54,6 +60,15 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   List<Map<String, dynamic>> _margaList = [];
   DateTime? _tanggalWafat; // cuma relevan kalau _masihHidup == 'tidak'
 
+  // Data istri
+  Map<String, dynamic>? _suami;
+  List<Map<String, dynamic>> _istriList = [];
+  bool _loadingIstri = false;
+  int? _istriId; // null = tambah istri baru
+  final _istriNamaCtrl = TextEditingController();
+  int? _istriMargaId;
+  int? _istriTahun;
+
   // Tanggal lahir — dipakai baik mode Tambah maupun Edit, boleh hanya tahu
   // tahunnya saja (isi 1 Januari tahun itu, lihat konvensi di backend).
   DateTime? _tanggalLahir;
@@ -78,7 +93,13 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   void initState() {
     super.initState();
     _loadLookups();
-    if (widget.initialTargetId != null) {
+    if (widget.initialIstriSuamiId != null) {
+      _mode = _Mode.istri;
+      _muatIstri({
+        'id': widget.initialIstriSuamiId,
+        'name': widget.initialIstriSuamiName ?? '',
+      });
+    } else if (widget.initialTargetId != null) {
       _mode = _Mode.edit;
       _muatDataTarget({
         'id': widget.initialTargetId,
@@ -176,6 +197,100 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     } catch (_) {
       // dibiarkan kosong
     }
+  }
+
+  Future<void> _pickSuami() async {
+    final result = await showOrangSearchSheet(
+      context,
+      ref,
+      title: 'Pilih Suami',
+      extraDomain: const [
+        ['jenis_kelamin', '=', 'L'],
+      ],
+    );
+    if (result == null) return;
+    await _muatIstri(result);
+  }
+
+  /// Muat daftar istri yang sudah tercatat milik suami, dan punguannya.
+  Future<void> _muatIstri(Map<String, dynamic> suami) async {
+    setState(() {
+      _suami = suami;
+      _loadingIstri = true;
+      _istriList = [];
+      _istriId = null;
+      _istriNamaCtrl.clear();
+      _istriMargaId = null;
+      _istriTahun = null;
+    });
+    try {
+      final api = ref.read(apiClientProvider);
+      final hasil = await Future.wait([
+        api.callKw(
+          model: 'tarombo.pernikahan',
+          method: 'search_read',
+          args: [
+            [
+              ['suami_id', '=', suami['id']],
+            ],
+          ],
+          kwargs: {
+            'fields': ['urutan', 'istri_nama', 'istri_marga_id', 'tahun'],
+            'order': 'urutan',
+          },
+        ),
+        api.callKw(
+          model: 'tarombo.orang',
+          method: 'search_read',
+          args: [
+            [
+              ['id', '=', suami['id']],
+            ],
+          ],
+          kwargs: {
+            'fields': ['punguan_id'],
+          },
+        ),
+      ]);
+      final orang = hasil[1] as List;
+      if (!mounted) return;
+      setState(() {
+        _istriList = (hasil[0] as List).cast<Map<String, dynamic>>();
+        if (orang.isNotEmpty && (orang.first as Map)['punguan_id'] is List) {
+          _punguanId = (orang.first as Map)['punguan_id'][0] as int;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'Gagal memuat data istri. Periksa koneksi Anda.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingIstri = false);
+    }
+  }
+
+  String _labelIstri(Map<String, dynamic> p) {
+    final nama = (asOdooString(p['istri_nama']) ?? '').trim();
+    final marga = p['istri_marga_id'] is List
+        ? (p['istri_marga_id'][1] as String)
+        : '';
+    final teks = marga.isEmpty
+        ? nama
+        : (nama.toLowerCase().contains(marga.toLowerCase())
+              ? nama
+              : (nama.isEmpty ? 'br $marga' : '$nama br $marga'));
+    return 'Istri ke-${p['urutan']}: ${teks.isEmpty ? '(belum diketahui)' : teks}';
+  }
+
+  Future<void> _pickTahunIstri() async {
+    final hasil = await showTahunPicker(
+      context,
+      initial: _istriTahun ?? 2000,
+      title: 'Pilih Tahun Menikah',
+    );
+    if (hasil != null) setState(() => _istriTahun = hasil);
   }
 
   Future<void> _pickTarget() async {
@@ -276,6 +391,24 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
       setState(() => _error = 'Pilih orang yang akan dikoreksi/dilengkapi.');
       return;
     }
+    if (_mode == _Mode.istri) {
+      if (_suami == null) {
+        setState(() => _error = 'Pilih suami terlebih dahulu.');
+        return;
+      }
+      final nama = _istriNamaCtrl.text.trim();
+      if (_istriId == null && _istriMargaId == null) {
+        setState(() => _error = 'Pilih marga istri.');
+        return;
+      }
+      if (_istriId != null &&
+          nama.isEmpty &&
+          _istriMargaId == null &&
+          _istriTahun == null) {
+        setState(() => _error = 'Isi minimal satu data istri yang diperbarui.');
+        return;
+      }
+    }
     if (_punguanId == null) {
       setState(() => _error = 'Pilih punguan terlebih dahulu.');
       return;
@@ -286,7 +419,18 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
     });
     try {
       final service = ref.read(usulanSubmitProvider);
-      if (_mode == _Mode.tambah) {
+      if (_mode == _Mode.istri) {
+        await service.submitIstri(
+          suamiId: _suami!['id'] as int,
+          punguanId: _punguanId!,
+          sumberKet: _sumberCtrl.text.trim(),
+          istriId: _istriId,
+          istriNama: _istriNamaCtrl.text.trim(),
+          istriMargaId: _istriMargaId,
+          istriTahun: _istriTahun,
+          catatan: _catatanCtrl.text.trim(),
+        );
+      } else if (_mode == _Mode.tambah) {
         await service.submitTambah(
           nama: _namaCtrl.text.trim(),
           jenisKelamin: _jenisKelamin,
@@ -338,6 +482,7 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
   @override
   void dispose() {
     _namaCtrl.dispose();
+    _istriNamaCtrl.dispose();
     _urutanTambahCtrl.dispose();
     _suamiNamaCtrl.dispose();
     _sumberCtrl.dispose();
@@ -367,13 +512,18 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                         segments: const [
                           ButtonSegment(
                             value: _Mode.tambah,
-                            label: Text('Tambah Baru'),
+                            label: Text('Tambah'),
                             icon: Icon(Icons.person_add_alt_1_outlined),
                           ),
                           ButtonSegment(
                             value: _Mode.edit,
-                            label: Text('Perbarui Data'),
+                            label: Text('Perbarui'),
                             icon: Icon(Icons.edit_note_rounded),
+                          ),
+                          ButtonSegment(
+                            value: _Mode.istri,
+                            label: Text('Data Istri'),
+                            icon: Icon(Icons.favorite_border_rounded),
                           ),
                         ],
                         selected: {_mode},
@@ -386,6 +536,8 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                     ],
                     if (_mode == _Mode.tambah)
                       ..._buildTambahFields()
+                    else if (_mode == _Mode.istri)
+                      ..._buildIstriFields()
                     else
                       ..._buildEditFields(),
                     const Divider(height: 32),
@@ -418,33 +570,35 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                           ? 'Wajib diisi'
                           : null,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _telpCtrl,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Nomor Telepon (opsional)',
-                        border: OutlineInputBorder(),
+                    if (_mode != _Mode.istri) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _telpCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Nomor Telepon (opsional)',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email (opsional)',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email (opsional)',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) {
+                          final t = (v ?? '').trim();
+                          if (t.isEmpty) return null;
+                          return RegExp(
+                                r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$',
+                              ).hasMatch(t)
+                              ? null
+                              : 'Format email tidak valid';
+                        },
                       ),
-                      validator: (v) {
-                        final t = (v ?? '').trim();
-                        if (t.isEmpty) return null;
-                        return RegExp(
-                              r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$',
-                            ).hasMatch(t)
-                            ? null
-                            : 'Format email tidak valid';
-                      },
-                    ),
+                    ],
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _catatanCtrl,
@@ -454,8 +608,10 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
                       ),
                       maxLines: 3,
                     ),
-                    const SizedBox(height: 16),
-                    _buildFotoPicker(),
+                    if (_mode != _Mode.istri) ...[
+                      const SizedBox(height: 16),
+                      _buildFotoPicker(),
+                    ],
                     if (_error != null) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -552,6 +708,123 @@ class _UsulanFormScreenState extends ConsumerState<UsulanFormScreen> {
           return null;
         },
       ),
+    ];
+  }
+
+  List<Widget> _buildIstriFields() {
+    final edit = _istriId != null;
+    return [
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        tileColor: const Color(0xFFFAF9F5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+        leading: const Icon(Icons.man_rounded, color: _kGreen1),
+        title: Text(_suami?['name'] as String? ?? 'Pilih Suami'),
+        subtitle: const Text('Ketuk untuk mencari di pohon keluarga'),
+        trailing: _loadingIstri
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.search),
+        onTap: _loadingIstri ? null : _pickSuami,
+      ),
+      if (_suami != null && !_loadingIstri) ...[
+        const SizedBox(height: 16),
+        DropdownButtonFormField<int?>(
+          initialValue: _istriId,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Usulan untuk',
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            const DropdownMenuItem(
+              value: null,
+              child: Text('Lengkapi data istri yang belum tercatat'),
+            ),
+            ..._istriList.map(
+              (p) => DropdownMenuItem(
+                value: p['id'] as int,
+                child: Text(
+                  'Perbarui data: ${_labelIstri(p)}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+          onChanged: (v) => setState(() {
+            _istriId = v;
+            _error = null;
+          }),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _istriNamaCtrl,
+          decoration: InputDecoration(
+            labelText: edit
+                ? 'Nama Istri Baru (kosongkan jika tidak berubah)'
+                : 'Nama Istri (jika diketahui)',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<int?>(
+          initialValue: _istriMargaId,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: edit ? 'Marga Istri (opsional)' : 'Marga Istri',
+            border: const OutlineInputBorder(),
+          ),
+          items: [
+            DropdownMenuItem(
+              value: null,
+              child: Text(edit ? '(Tidak diubah)' : 'Pilih marga'),
+            ),
+            ..._margaList.map(
+              (m) => DropdownMenuItem(
+                value: m['id'] as int,
+                child: Text(m['name'] as String),
+              ),
+            ),
+          ],
+          onChanged: (v) => setState(() => _istriMargaId = v),
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          tileColor: const Color(0xFFFAF9F5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Colors.grey.shade300),
+          ),
+          leading: Icon(
+            Icons.event_outlined,
+            color: _istriTahun != null ? _kGreen1 : Colors.grey.shade500,
+          ),
+          title: Text(
+            _istriTahun != null ? '$_istriTahun' : 'Tahun Menikah (opsional)',
+          ),
+          subtitle: Text(
+            _istriTahun != null ? 'Tahun Menikah' : 'Ketuk untuk memilih tahun',
+          ),
+          trailing: _istriTahun != null
+              ? IconButton(
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Colors.grey.shade500,
+                  ),
+                  onPressed: () => setState(() => _istriTahun = null),
+                )
+              : const Icon(Icons.calendar_month_outlined),
+          onTap: _pickTahunIstri,
+        ),
+      ],
     ];
   }
 

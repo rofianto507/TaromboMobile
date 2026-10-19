@@ -29,6 +29,11 @@ class UsulanDetail {
   final double? usulLongitude;
   final String? usulSuamiNama;
   final String? usulSuamiMarga;
+  // Usulan data istri (jenis 'istri').
+  final String? usulIstriNama;
+  final String? usulIstriMarga;
+  final int? usulIstriTahun;
+  final String? istriDiperbarui; // nama istri yang dikoreksi, null = istri baru
   final bool adaFoto;
 
   final String? catatan;
@@ -62,6 +67,10 @@ class UsulanDetail {
     this.usulLongitude,
     this.usulSuamiNama,
     this.usulSuamiMarga,
+    this.usulIstriNama,
+    this.usulIstriMarga,
+    this.usulIstriTahun,
+    this.istriDiperbarui,
     this.adaFoto = false,
     this.catatan,
     required this.sumberKet,

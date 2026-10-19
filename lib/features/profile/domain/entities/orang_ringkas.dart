@@ -44,6 +44,16 @@ class PernikahanRingkas {
     this.tahun,
     this.jumlahAnak = 0,
   });
+
+  /// Satu baris istri, mis. "Agnes Amd. br Gultom"; bila nama tidak tercatat
+  /// cukup "br Gultom".
+  String get label {
+    final nama = istriNama.trim();
+    final marga = (istriMarga ?? '').trim();
+    if (marga.isEmpty) return nama;
+    if (nama.toLowerCase().contains(marga.toLowerCase())) return nama;
+    return nama.isEmpty ? 'br $marga' : '$nama br $marga';
+  }
 }
 
 class PendidikanRingkas {

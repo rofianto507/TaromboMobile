@@ -34,6 +34,8 @@ String jenisUsulanLabel(String jenis) {
       return 'Koreksi Data';
     case 'lengkapi':
       return 'Lengkapi Data';
+    case 'istri':
+      return 'Data Istri';
     default:
       return jenis;
   }

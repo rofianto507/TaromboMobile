@@ -58,10 +58,85 @@ final usulanListProvider = FutureProvider.autoDispose<List<UsulanRingkas>>((
   }).toList();
 });
 
-final usulanDetailProvider = FutureProvider.autoDispose
-    .family<UsulanDetail, int>((ref, usulanId) async {
-      final api = ref.read(apiClientProvider);
-      final rows =
+final usulanDetailProvider = FutureProvider.autoDispose.family<UsulanDetail, int>((
+  ref,
+  usulanId,
+) async {
+  final api = ref.read(apiClientProvider);
+  final rows =
+      await api.callKw(
+            model: 'tarombo.usulan',
+            method: 'search_read',
+            args: [
+              [
+                ['id', '=', usulanId],
+                [
+                  'active',
+                  'in',
+                  [true, false],
+                ],
+              ],
+            ],
+            kwargs: {
+              'fields': [
+                'name',
+                'jenis',
+                'state',
+                'punguan_id',
+                'orang_id',
+                'ayah_id',
+                'usul_nama',
+                'usul_jenis_kelamin',
+                'usul_masih_hidup',
+                'usul_urutan',
+                'usul_tanggal_lahir',
+                'usul_tanggal_wafat',
+                'usul_tahun_lahir',
+                'usul_tahun_wafat',
+                'usul_provinsi_id',
+                'usul_kabupaten_id',
+                'usul_kecamatan_id',
+                'usul_desa_id',
+                'usul_alamat_jalan',
+                'usul_no_telp',
+                'usul_email_kontak',
+                'usul_latitude',
+                'usul_longitude',
+                'usul_suami_nama',
+                'usul_suami_marga_id',
+                'usul_foto',
+                'catatan',
+                'sumber_ket',
+                'tanggal_ajukan',
+                'peninjau_id',
+                'tanggal_tinjau',
+                'alasan_tolak',
+                'lampiran_ids',
+              ],
+              'limit': 1,
+            },
+          )
+          as List;
+  if (rows.isEmpty) {
+    throw Exception('Usulan tidak ditemukan.');
+  }
+  final r = (rows.first as Map).cast<String, dynamic>();
+
+  final jenis = r['jenis'] as String;
+  final target = jenis == 'tambah' ? r['ayah_id'] : r['orang_id'];
+  final wilayahBagian = [
+    _m2oName(r['usul_desa_id']),
+    _m2oName(r['usul_kecamatan_id']),
+    _m2oName(r['usul_kabupaten_id']),
+    _m2oName(r['usul_provinsi_id']),
+  ].whereType<String>().toList();
+
+  // Kolom usulan data istri dibaca terpisah dan hanya untuk jenis 'istri',
+  // supaya server yang belum diperbarui tidak membuat detail usulan lain gagal.
+  Map<String, dynamic> istri = const {};
+  if (jenis == 'istri') {
+    try {
+      final ir =
           await api.callKw(
                 model: 'tarombo.usulan',
                 method: 'search_read',
@@ -77,129 +152,95 @@ final usulanDetailProvider = FutureProvider.autoDispose
                 ],
                 kwargs: {
                   'fields': [
-                    'name',
-                    'jenis',
-                    'state',
-                    'punguan_id',
-                    'orang_id',
-                    'ayah_id',
-                    'usul_nama',
-                    'usul_jenis_kelamin',
-                    'usul_masih_hidup',
-                    'usul_urutan',
-                    'usul_tanggal_lahir',
-                    'usul_tanggal_wafat',
-                    'usul_tahun_lahir',
-                    'usul_tahun_wafat',
-                    'usul_provinsi_id',
-                    'usul_kabupaten_id',
-                    'usul_kecamatan_id',
-                    'usul_desa_id',
-                    'usul_alamat_jalan',
-                    'usul_no_telp',
-                    'usul_email_kontak',
-                    'usul_latitude',
-                    'usul_longitude',
-                    'usul_suami_nama',
-                    'usul_suami_marga_id',
-                    'usul_foto',
-                    'catatan',
-                    'sumber_ket',
-                    'tanggal_ajukan',
-                    'peninjau_id',
-                    'tanggal_tinjau',
-                    'alasan_tolak',
-                    'lampiran_ids',
+                    'usul_istri_nama',
+                    'usul_istri_marga_id',
+                    'usul_istri_tahun',
+                    'istri_id',
                   ],
                   'limit': 1,
                 },
               )
               as List;
-      if (rows.isEmpty) {
-        throw Exception('Usulan tidak ditemukan.');
-      }
-      final r = (rows.first as Map).cast<String, dynamic>();
+      if (ir.isNotEmpty) istri = (ir.first as Map).cast<String, dynamic>();
+    } catch (_) {}
+  }
 
-      final jenis = r['jenis'] as String;
-      final target = jenis == 'tambah' ? r['ayah_id'] : r['orang_id'];
-      final wilayahBagian = [
-        _m2oName(r['usul_desa_id']),
-        _m2oName(r['usul_kecamatan_id']),
-        _m2oName(r['usul_kabupaten_id']),
-        _m2oName(r['usul_provinsi_id']),
-      ].whereType<String>().toList();
-
-      final lampiranIds = (r['lampiran_ids'] as List?)?.cast<int>() ?? const [];
-      List<LampiranItem> lampiran = const [];
-      if (lampiranIds.isNotEmpty) {
-        final attRows =
-            await api.callKw(
-                  model: 'ir.attachment',
-                  method: 'read',
-                  args: [
-                    lampiranIds,
-                    ['name'],
-                  ],
-                )
-                as List;
-        lampiran = attRows
-            .cast<Map<String, dynamic>>()
-            .map(
-              (a) => LampiranItem(
-                id: a['id'] as int,
-                name: asOdooString(a['name']) ?? 'Berkas',
-              ),
+  final lampiranIds = (r['lampiran_ids'] as List?)?.cast<int>() ?? const [];
+  List<LampiranItem> lampiran = const [];
+  if (lampiranIds.isNotEmpty) {
+    final attRows =
+        await api.callKw(
+              model: 'ir.attachment',
+              method: 'read',
+              args: [
+                lampiranIds,
+                ['name'],
+              ],
             )
-            .toList();
-      }
+            as List;
+    lampiran = attRows
+        .cast<Map<String, dynamic>>()
+        .map(
+          (a) => LampiranItem(
+            id: a['id'] as int,
+            name: asOdooString(a['name']) ?? 'Berkas',
+          ),
+        )
+        .toList();
+  }
 
-      return UsulanDetail(
-        id: r['id'] as int,
-        name: r['name'] as String,
-        jenis: jenis,
-        state: r['state'] as String,
-        punguan: _m2oName(r['punguan_id']),
-        targetName: (target is List && target.length > 1)
-            ? target[1] as String
-            : null,
-        usulNama: asOdooString(r['usul_nama']),
-        usulJenisKelamin: asOdooString(r['usul_jenis_kelamin']),
-        usulMasihHidup: asOdooString(r['usul_masih_hidup']),
-        usulUrutan: r['usul_urutan'] == false ? null : r['usul_urutan'] as int?,
-        usulTanggalLahir: asOdooDate(r['usul_tanggal_lahir']),
-        usulTanggalWafat: asOdooDate(r['usul_tanggal_wafat']),
-        usulTahunLahir:
-            r['usul_tahun_lahir'] is int && r['usul_tahun_lahir'] > 0
-            ? r['usul_tahun_lahir'] as int
-            : null,
-        usulTahunWafat:
-            r['usul_tahun_wafat'] is int && r['usul_tahun_wafat'] > 0
-            ? r['usul_tahun_wafat'] as int
-            : null,
-        usulWilayah: wilayahBagian.isEmpty ? null : wilayahBagian.join(' - '),
-        usulAlamatJalan: asOdooString(r['usul_alamat_jalan']),
-        usulNoTelp: asOdooString(r['usul_no_telp']),
-        usulEmailKontak: asOdooString(r['usul_email_kontak']),
-        usulLatitude:
-            (r['usul_latitude'] is num && (r['usul_latitude'] as num) != 0)
-            ? (r['usul_latitude'] as num).toDouble()
-            : null,
-        usulLongitude:
-            (r['usul_longitude'] is num && (r['usul_longitude'] as num) != 0)
-            ? (r['usul_longitude'] as num).toDouble()
-            : null,
-        usulSuamiNama: asOdooString(r['usul_suami_nama']),
-        usulSuamiMarga: _m2oName(r['usul_suami_marga_id']),
-        adaFoto: r['usul_foto'] != false && r['usul_foto'] != null,
-        catatan: asOdooString(r['catatan']),
-        sumberKet: asOdooString(r['sumber_ket']) ?? '-',
-        tanggalAjukan: asOdooDateTime(r['tanggal_ajukan']),
-        peninjau: _m2oName(r['peninjau_id']),
-        tanggalTinjau: asOdooDateTime(r['tanggal_tinjau']),
-        alasanTolak: asOdooString(r['alasan_tolak']),
-        lampiran: lampiran,
-      );
-    });
+  return UsulanDetail(
+    id: r['id'] as int,
+    name: r['name'] as String,
+    jenis: jenis,
+    state: r['state'] as String,
+    punguan: _m2oName(r['punguan_id']),
+    targetName: (target is List && target.length > 1)
+        ? target[1] as String
+        : null,
+    usulNama: asOdooString(r['usul_nama']),
+    usulJenisKelamin: asOdooString(r['usul_jenis_kelamin']),
+    usulMasihHidup: asOdooString(r['usul_masih_hidup']),
+    usulUrutan: r['usul_urutan'] == false ? null : r['usul_urutan'] as int?,
+    usulTanggalLahir: asOdooDate(r['usul_tanggal_lahir']),
+    usulTanggalWafat: asOdooDate(r['usul_tanggal_wafat']),
+    usulTahunLahir: r['usul_tahun_lahir'] is int && r['usul_tahun_lahir'] > 0
+        ? r['usul_tahun_lahir'] as int
+        : null,
+    usulTahunWafat: r['usul_tahun_wafat'] is int && r['usul_tahun_wafat'] > 0
+        ? r['usul_tahun_wafat'] as int
+        : null,
+    usulWilayah: wilayahBagian.isEmpty ? null : wilayahBagian.join(' - '),
+    usulAlamatJalan: asOdooString(r['usul_alamat_jalan']),
+    usulNoTelp: asOdooString(r['usul_no_telp']),
+    usulEmailKontak: asOdooString(r['usul_email_kontak']),
+    usulLatitude:
+        (r['usul_latitude'] is num && (r['usul_latitude'] as num) != 0)
+        ? (r['usul_latitude'] as num).toDouble()
+        : null,
+    usulLongitude:
+        (r['usul_longitude'] is num && (r['usul_longitude'] as num) != 0)
+        ? (r['usul_longitude'] as num).toDouble()
+        : null,
+    usulSuamiNama: asOdooString(r['usul_suami_nama']),
+    usulSuamiMarga: _m2oName(r['usul_suami_marga_id']),
+    usulIstriNama: asOdooString(istri['usul_istri_nama']),
+    usulIstriMarga: _m2oName(istri['usul_istri_marga_id']),
+    usulIstriTahun:
+        istri['usul_istri_tahun'] is int && istri['usul_istri_tahun'] > 0
+        ? istri['usul_istri_tahun'] as int
+        : null,
+    istriDiperbarui: _m2oName(istri['istri_id']),
+    adaFoto: r['usul_foto'] != false && r['usul_foto'] != null,
+    catatan: asOdooString(r['catatan']),
+    sumberKet: asOdooString(r['sumber_ket']) ?? '-',
+    tanggalAjukan: asOdooDateTime(r['tanggal_ajukan']),
+    peninjau: _m2oName(r['peninjau_id']),
+    tanggalTinjau: asOdooDateTime(r['tanggal_tinjau']),
+    alasanTolak: asOdooString(r['alasan_tolak']),
+    lampiran: lampiran,
+  );
+});
 
 String? _m2oName(dynamic v) =>
     (v is List && v.length > 1) ? v[1] as String : null;
@@ -250,6 +291,47 @@ class UsulanSubmitService {
           'usul_longitude': ?usulLongitude,
           'usul_tahun_lahir': ?usulTahunLahir,
           'usul_urutan': ?usulUrutan,
+        },
+      ],
+    );
+    await api.callKw(
+      model: 'tarombo.usulan',
+      method: 'action_ajukan',
+      args: [
+        [id],
+      ],
+    );
+    ref.invalidate(usulanListProvider);
+  }
+
+  /// Usulan data istri: [istriId] null = tambah istri baru, terisi = perbarui
+  /// istri yang sudah tercatat (hanya kolom yang diisi yang diubah).
+  Future<void> submitIstri({
+    required int suamiId,
+    required int punguanId,
+    required String sumberKet,
+    int? istriId,
+    String? istriNama,
+    int? istriMargaId,
+    int? istriTahun,
+    String? catatan,
+  }) async {
+    final api = ref.read(apiClientProvider);
+    final id = await api.callKw(
+      model: 'tarombo.usulan',
+      method: 'create',
+      args: [
+        {
+          'jenis': 'istri',
+          'orang_id': suamiId,
+          'punguan_id': punguanId,
+          'sumber_ket': sumberKet,
+          'istri_id': ?istriId,
+          if (istriNama != null && istriNama.isNotEmpty)
+            'usul_istri_nama': istriNama,
+          'usul_istri_marga_id': ?istriMargaId,
+          'usul_istri_tahun': ?istriTahun,
+          if (catatan != null && catatan.isNotEmpty) 'catatan': catatan,
         },
       ],
     );

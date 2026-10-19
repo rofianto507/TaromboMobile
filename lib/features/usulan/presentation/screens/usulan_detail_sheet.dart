@@ -158,6 +158,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           Text(
             d.jenis == 'tambah'
                 ? 'Anak dari ${d.targetName}'
+                : d.jenis == 'istri'
+                ? 'Suami: ${d.targetName}'
                 : 'Untuk: ${d.targetName}',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
           ),
@@ -193,6 +195,32 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             icon: Icons.badge_outlined,
             label: 'Nama',
             value: d.usulNama!,
+          ),
+        if (d.jenis == 'istri')
+          _InfoRow(
+            icon: Icons.favorite_border_rounded,
+            label: 'Aksi',
+            value: d.istriDiperbarui != null
+                ? 'Memperbarui data istri: ${d.istriDiperbarui}'
+                : 'Melengkapi data istri',
+          ),
+        if (d.usulIstriNama != null)
+          _InfoRow(
+            icon: Icons.woman_rounded,
+            label: 'Nama Istri',
+            value: d.usulIstriNama!,
+          ),
+        if (d.usulIstriMarga != null)
+          _InfoRow(
+            icon: Icons.groups_outlined,
+            label: 'Marga Istri',
+            value: d.usulIstriMarga!,
+          ),
+        if (d.usulIstriTahun != null)
+          _InfoRow(
+            icon: Icons.event_outlined,
+            label: 'Tahun Menikah',
+            value: '${d.usulIstriTahun}',
           ),
         if (d.usulJenisKelamin != null)
           _InfoRow(

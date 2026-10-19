@@ -11,6 +11,8 @@ class PohonNode {
   final String status;
   final bool punyaFoto;
   final bool terhubungAkun;
+  // Teks siap tampil per istri, mis. "Agnes Amd. br Gultom" (hanya laki-laki).
+  final List<String> istri;
   final bool selected;
   final bool collapsed;
   final bool hasMore;
@@ -30,6 +32,7 @@ class PohonNode {
     required this.status,
     required this.punyaFoto,
     this.terhubungAkun = false,
+    this.istri = const [],
     required this.selected,
     required this.collapsed,
     required this.hasMore,
@@ -52,6 +55,10 @@ class PohonNode {
     status: asOdooString(json['status']) ?? '',
     punyaFoto: json['punya_foto'] == true,
     terhubungAkun: json['terhubung_akun'] == true,
+    istri: (json['istri'] as List? ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.trim().isNotEmpty)
+        .toList(),
     selected: json['selected'] == true,
     collapsed: json['collapsed'] == true,
     hasMore: json['has_more'] == true,

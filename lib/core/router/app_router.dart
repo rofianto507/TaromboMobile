@@ -289,6 +289,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return UsulanFormScreen(
             initialTargetId: extra?['targetId'] as int?,
             initialTargetName: extra?['targetName'] as String?,
+            initialIstriSuamiId: extra?['istriSuamiId'] as int?,
+            initialIstriSuamiName: extra?['istriSuamiName'] as String?,
           );
         },
       ),

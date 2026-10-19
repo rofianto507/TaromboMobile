@@ -338,6 +338,19 @@ class _HeaderSection extends ConsumerWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
+                for (final p in d.pernikahan)
+                  if (p.label.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        p.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
                 const SizedBox(height: 4),
                 Wrap(
                   alignment: WrapAlignment.center,
@@ -558,6 +571,19 @@ class _KeluargaTab extends StatelessWidget {
             child: Text(
               'Belum ada data pernikahan.',
               style: TextStyle(color: Colors.grey),
+            ),
+          ),
+        if (d.jenisKelamin == 'L')
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => context.push(
+                '/usulan/baru',
+                extra: {'istriSuamiId': d.id, 'istriSuamiName': d.name},
+              ),
+              icon: const Icon(Icons.edit_note_rounded, size: 18),
+              label: const Text('Lengkapi data istri'),
+              style: TextButton.styleFrom(foregroundColor: _kGreen1),
             ),
           ),
         const Divider(height: 32),
