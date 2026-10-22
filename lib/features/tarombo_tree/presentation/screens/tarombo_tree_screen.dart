@@ -351,9 +351,11 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
       if (!mounted) return;
       await SharePlus.instance.share(
         ShareParams(
-          text:
-              'Tarombo ${root.name}. Telusuri silsilah marga di aplikasi '
-              'Tarombo. Unduh gratis di Play Store:\n$_kLinkPlayStore',
+          text: Platform.isIOS
+              ? 'Tarombo ${root.name}. Telusuri silsilah marga di aplikasi '
+                    'Tarombo.'
+              : 'Tarombo ${root.name}. Telusuri silsilah marga di aplikasi '
+                    'Tarombo. Unduh gratis di Play Store:\n$_kLinkPlayStore',
           subject: 'Tarombo ${root.name}',
           files: [XFile(f.path, mimeType: 'image/png')],
         ),

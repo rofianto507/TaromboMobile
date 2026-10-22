@@ -92,8 +92,12 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
         'Waktu: ${formatTanggal(b.tanggalMulai!, denganJam: true)}',
       if (b.agenda && b.lokasi != null) 'Lokasi: ${b.lokasi}',
       if (isi.isNotEmpty) '\n$isi',
-      '\nKabar keluarga dan silsilah marga ada di aplikasi Tarombo. '
-          'Unduh gratis di Play Store:\n$_kLinkPlayStore',
+      // Di iOS tidak menyebut toko/platform lain (pedoman App Review 2.3.10).
+      if (Platform.isIOS)
+        '\nKabar keluarga dan silsilah marga ada di aplikasi Tarombo.'
+      else
+        '\nKabar keluarga dan silsilah marga ada di aplikasi Tarombo. '
+            'Unduh gratis di Play Store:\n$_kLinkPlayStore',
     ].join('\n');
   }
 
