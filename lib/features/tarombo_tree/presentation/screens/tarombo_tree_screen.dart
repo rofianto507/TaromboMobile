@@ -16,6 +16,7 @@ import '../../../../shared/widgets/notifikasi_button.dart';
 import '../../../../shared/widgets/verified_badge.dart';
 import '../../../../shared/utils/debouncer.dart';
 import '../../../../shared/utils/orang_format.dart';
+import '../../../../shared/utils/share_origin.dart';
 import '../../../../shared/widgets/orang_list_tile.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/pohon_node.dart';
@@ -358,6 +359,7 @@ class _TaromboTreeScreenState extends ConsumerState<TaromboTreeScreen> {
                     'Tarombo. Unduh gratis di Play Store:\n$_kLinkPlayStore',
           subject: 'Tarombo ${root.name}',
           files: [XFile(f.path, mimeType: 'image/png')],
+          sharePositionOrigin: asalBagikan(context),
         ),
       );
     } catch (_) {

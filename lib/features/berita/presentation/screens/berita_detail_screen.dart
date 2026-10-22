@@ -12,6 +12,7 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../shared/widgets/app_dialog.dart';
+import '../../../../shared/utils/share_origin.dart';
 import '../../../../shared/widgets/orang_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../klaim/domain/entities/klaim_info.dart';
@@ -114,6 +115,7 @@ class _BeritaDetailScreenState extends ConsumerState<BeritaDetailScreen> {
           text: _teksBagikan(d),
           subject: d.ringkas.judul,
           files: gambar == null ? null : [gambar],
+          sharePositionOrigin: asalBagikan(context),
         ),
       );
     } catch (_) {
