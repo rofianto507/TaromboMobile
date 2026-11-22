@@ -3,6 +3,9 @@
 Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **Odoo 19**. Dibangun dengan Flutter, aplikasi ini memungkinkan anggota menelusuri pohon keluarga, mengenali hubungan kekerabatan adat (partuturan), mengikuti berita dan agenda punguan, mengajukan usulan data, serta mengelola arsip keluarga.
 
 [![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Unduh-3DDC84?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile)
+[![Download on the App Store](https://img.shields.io/badge/App%20Store-Unduh-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/id/app/tarombo/id6824446485)
+
+Versi saat ini: **1.0.11+16**. Tersedia di **Google Play** (Android) dan **App Store** (iOS, target iOS 15.0).
 
 ---
 
@@ -32,17 +35,19 @@ Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **O
 | Fitur | Deskripsi |
 |---|---|
 | 🔐 **Autentikasi** | Login dengan akun biasa atau Google; sesi disimpan aman (`flutter_secure_storage`) |
-| 🌲 **Pohon Tarombo** | Penelusuran silsilah antar generasi (sundut), lengkap dengan marga |
+| 🌲 **Pohon Tarombo** | Penelusuran silsilah antar generasi (sundut), lengkap dengan marga dan daftar istri; pohon dapat dibagikan |
 | ✅ **Akun Terverifikasi** | Lencana centang biru untuk anggota yang akunnya sudah diverifikasi pengurus |
 | 🧮 **Partuturan** | Hubungan dan sebutan kekerabatan adat antara dua anggota, lengkap dengan penjelasannya |
 | 📰 **Berita & Agenda** | Kabar dan jadwal punguan di beranda, bisa dibagikan, dengan komentar (laporkan dan blokir tersedia) |
 | 📇 **Kontak & Domisili** | Telepon, email, dan domisili sampai desa/kelurahan; hanya untuk akun terverifikasi |
 | 🗺️ **Sebaran Anggota** | Jumlah anggota per provinsi atau kabupaten/kota di peta (`flutter_map`), tanpa lokasi rumah |
-| 📝 **Usulan Data** | Ajukan penambahan atau koreksi data untuk ditinjau pengurus, dengan percakapan dua arah |
+| 📝 **Usulan Data** | Ajukan penambahan anggota (nomor "Anak ke-" disarankan otomatis), koreksi, atau data istri untuk ditinjau pengurus, dengan percakapan dua arah |
+| 👤 **Profil Saya** | Lengkapi foto, tahun lahir, domisili, kontak, serta riwayat pendidikan dan pekerjaan sendiri tanpa menunggu pengurus |
 | 📂 **Arsip Keluarga** | Dokumen, foto, audio, dan video; satu arsip dapat terkait banyak anggota |
 | 📋 **Direktori Keahlian** | Cari anggota berdasarkan profesi atau keahlian |
 | 🪪 **Klaim Akun & Banding** | Tautkan akun ke nama di pohon; ajukan banding bila nama sudah diklaim akun lain |
-| 🔔 **Notifikasi & Masukan** | Notifikasi status pengajuan, berita, dan pesan pengurus; kirim masukan dari menu Akun |
+| 🔔 **Notifikasi & Masukan** | Push notification (FCM) dan kotak notifikasi untuk status pengajuan, berita, dan pesan pengurus; kirim masukan dari menu Akun |
+| 🔑 **Kata Sandi** | Akun yang masuk lewat Google dapat menetapkan kata sandi; yang sudah punya dapat mengubahnya (menu Akun) |
 
 ---
 
@@ -57,7 +62,11 @@ Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **O
 | Peta & GPS | `flutter_map` ^7.0.2 · `geolocator` ^13.0.2 · `latlong2` ^0.9.1 |
 | Gambar | `image_picker` ^1.1.2 · `cached_network_image` ^3.4.1 |
 | Arsip / File | `path_provider` ^2.1.5 · `open_filex` ^4.5.0 |
-| Berbagi | `share_plus` |
+| Berbagi | `share_plus` ^12.0.2 |
+| Visualisasi Pohon | `graphview` ^1.5.1 |
+| Login Google | `google_sign_in` ^6.2.2 |
+| Push Notification | `firebase_core` · `firebase_messaging` · `flutter_local_notifications` |
+| Konten Berita | `flutter_html` ^3.0.0 · `file_picker` · `url_launcher` |
 | Lokalisasi | `flutter_localizations` · `intl` ^0.20.2 |
 | Backend | Odoo 19 (modul `tarombo`) via JSON-RPC / REST |
 
@@ -77,15 +86,23 @@ lib/
 │   └── theme/          # Tema Material (warna, tipografi)
 ├── features/
 │   ├── auth/           # Login, logout, provider autentikasi
-│   ├── home/           # Dashboard utama
-│   ├── profile/        # Profil & edit data diri
+│   ├── home/           # Beranda: menu utama, slider berita & agenda
+│   ├── shell/          # Navigasi bawah (Beranda, Tarombo, Akun)
+│   ├── tarombo_tree/   # Pohon silsilah (tab Tarombo), bagikan pohon
+│   ├── profile/        # Profil anggota lain (tab Kontak, Riwayat, dst.)
+│   ├── profil_saya/    # Lengkapi & ubah data diri sendiri
 │   ├── partuturan/     # Hubungan kekerabatan adat
-│   ├── usulan/         # Pengajuan usulan perubahan data
-│   ├── nearby_map/     # Peta kerabat terdekat (GPS)
+│   ├── usulan/         # Usulan perubahan data + percakapan
+│   ├── klaim/          # Klaim akun, banding, percakapan klaim
+│   ├── registration/   # Pendaftaran akun
+│   ├── berita/         # Berita & agenda, komentar (laporkan/blokir)
+│   ├── notifikasi/     # Kotak notifikasi
+│   ├── push/           # Layanan push notification (FCM)
+│   ├── masukan/        # Kirim masukan/laporan
+│   ├── account/        # Menu Akun, atur kata sandi
+│   ├── nearby_map/     # Sebaran Anggota per wilayah (route /peta-kerabat)
 │   ├── arsip/          # Arsip dokumen keluarga
 │   ├── direktori_keahlian/ # Direktori anggota berdasar keahlian
-│   ├── klaim/          # Klaim akun baru
-│   ├── registration/   # Pendaftaran anggota
 │   └── splash/         # Splash screen & pengecekan sesi
 └── shared/             # Widget, model, dan utilitas bersama
 ```
@@ -96,7 +113,9 @@ lib/
 
 - **Flutter SDK** `^3.12.2`  
 - **Dart SDK** `^3.12.2`  
-- **Android SDK** API 21+ (minSdkVersion 21)  
+- **Android**: minSdk mengikuti default Flutter (`flutter.minSdkVersion`)  
+- **iOS**: Xcode dan CocoaPods untuk build iOS (deployment target 15.0)  
+- **Firebase**: `google-services.json` (Android) / `GoogleService-Info.plist` (iOS) untuk push notification (kedua berkas tidak di-commit; berkas iOS belum ada di folder ini)  
 - Akses ke server Odoo dengan modul `tarombo` terinstal
 
 ---
@@ -221,7 +240,9 @@ Aset ikon ada di `assets/images/`:
 Aplikasi ini memerlukan modul **`tarombo`** yang berjalan di server Odoo 19.  
 Repository backend: [rofianto507/tarombo](https://github.com/rofianto507/tarombo)
 
-Endpoint autentikasi dihandle melalui controller di `tarombo/controllers/mobile_auth.py`.
+Endpoint autentikasi (register, login Google, atur/status kata sandi, hapus akun) ada di `tarombo/controllers/mobile_auth.py`; fitur lain memanggil method model Odoo lewat `call_kw`.
+
+> Backend dipakai bersama oleh semua versi aplikasi yang sudah dirilis, sehingga field dan endpoint lama tidak boleh dihapus. Perbarui modul server (`-u tarombo`) sebelum merilis versi aplikasi yang meminta field baru.
 
 ---
 
