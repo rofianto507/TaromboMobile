@@ -1,11 +1,31 @@
-# TaromboMobile 🌳
+<p align="center">
+  <img src="docs/banner.png" alt="Tarombo - Silsilah Marga Silaen" width="100%">
+</p>
 
-Aplikasi mobile silsilah keluarga marga **Silaen** yang terhubung ke backend **Odoo 19**. Dibangun dengan Flutter, aplikasi ini memungkinkan anggota menelusuri pohon keluarga, mengenali hubungan kekerabatan adat (partuturan), mengikuti berita dan agenda punguan, mengajukan usulan data, serta mengelola arsip keluarga.
+<h1 align="center">TaromboMobile</h1>
 
-[![Get it on Google Play](https://img.shields.io/badge/Google%20Play-Unduh-3DDC84?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile)
-[![Download on the App Store](https://img.shields.io/badge/App%20Store-Unduh-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/id/app/tarombo/id6824446485)
+<p align="center">
+  <b>Aplikasi silsilah keluarga marga Silaen</b><br>
+  <i>Telusuri tarombo &bull; Kenali kerabat</i>
+</p>
 
-Versi saat ini: **1.0.11+16**. Tersedia di **Google Play** (Android) dan **App Store** (iOS, target iOS 15.0).
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-3.12-2E5339?style=flat-square&logo=flutter&logoColor=white" alt="Flutter">
+  <img src="https://img.shields.io/badge/versi-1.0.11%2B16-C8A24A?style=flat-square" alt="Versi 1.0.11+16">
+  <img src="https://img.shields.io/badge/backend-Odoo%2019-2E5339?style=flat-square" alt="Odoo 19">
+  <a href="https://play.google.com/store/apps/details?id=id.selstudio.tarombo_mobile"><img src="https://img.shields.io/badge/Google%20Play-Unduh-2E5339?style=flat-square&logo=googleplay&logoColor=white" alt="Google Play"></a>
+  <a href="https://apps.apple.com/id/app/tarombo/id6824446485"><img src="https://img.shields.io/badge/App%20Store-Unduh-C8A24A?style=flat-square&logo=apple&logoColor=white" alt="App Store"></a>
+</p>
+
+---
+
+<img src="docs/logo.png" alt="Logo Punguan Raja Silaen & Boruna" width="96" align="left" hspace="12">
+
+Aplikasi mobile yang terhubung ke backend **Odoo 19** ([modul `tarombo`](https://github.com/rofianto507/tarombo)). Dibangun dengan Flutter, aplikasi ini memungkinkan anggota menelusuri pohon keluarga, mengenali hubungan kekerabatan adat (partuturan), mengikuti berita dan agenda punguan, mengajukan usulan data, serta mengelola arsip keluarga.
+
+Tersedia di **Google Play** (Android) dan **App Store** (iOS, target iOS 15.0).
+
+<br clear="left">
 
 ---
 
